@@ -36,7 +36,7 @@ TEST(PixelBuffer, PixelBuffer_DrawAndGet) {
 
 TEST(PixelBuffer, PixelBuffer_LoadImg) {
 
-    TmpFileHelper tf(png4x4);
+    fixtures::TmpFileHelper tf(fixtures::png4x4);
 
     PixelBuffer pb;
     EXPECT_TRUE(pb.loadImg(tf.fn_.c_str()));
@@ -51,12 +51,13 @@ TEST(PixelBuffer, PixelBuffer_LoadImg) {
 }
 
 TEST(PixelBuffer, draw_with_clipping) {
-    LvglTestEnv env(300, 320);
-    TmpFileHelper file(png256hi);
+    fixtures::LvglTestEnv env(300, 320);
+    fixtures::TmpFileHelper file(fixtures::png256hi);
     PixelBuffer pb;
     EXPECT_TRUE(pb.loadImg(file.fn_.c_str()));
 
     pb.draw(env.canvas_, -10, -10); //partially off-screen to the top left
     pb.draw(env.canvas_, 250, 250); //mostly off-screen to the bottom right
 
+    env.save();
 }

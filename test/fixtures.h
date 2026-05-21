@@ -3,9 +3,14 @@
 #include <vector>
 #include <lvgl.h>
 
+namespace fixtures {
+
 std::string fmtstr(const char* fmt, ... );
 std::string basename(const std::string& path);
 std::string testname();
+std::string cwd();
+
+void draw_lvgl_png(lv_disp_drv_t* drv, const char* path);
 
 // A minimal 4x4 rainbow png. starts with r, g, b, w, then more rainbow for the rest.
 extern const std::vector<uint8_t> png4x4;
@@ -28,4 +33,8 @@ struct LvglTestEnv {
     LvglTestEnv(uint16_t width, uint16_t height);
     ~LvglTestEnv();
     void reset(uint16_t width=0, uint16_t height=0);
+
+    void save();
 };
+
+} //fixtures

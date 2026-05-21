@@ -3,9 +3,13 @@
 #include <log.h>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 #include <sys/stat.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 using namespace std;
+namespace fixtures {
 
 std::string fmtstr(const char* fmt, ... ) {
     char buf[128];
@@ -23,6 +27,26 @@ std::string basename(const std::string& path) {
 std::string testname() {
     auto tst = ::testing::UnitTest::GetInstance()->current_test_info();
     return string(tst->test_suite_name()) + "." + tst->name();
+}
+
+std::string cwd() {
+    return std::filesystem::current_path();
+}
+
+void draw_lvgl_png(lv_disp_drv_t* drv, const char* path) {
+    if (!drv || !drv->draw_buf) return;
+    int w = drv->hor_res;
+    int h = drv->ver_res;
+    lv_color_t* cbuf = (lv_color_t*)drv->draw_buf->buf1;
+    std::vector<uint8_t> rgb888(w * h * 3);
+    for (int i = 0; i < w * h; i++) {
+        // LVGL color to RGB888
+        rgb888[i * 3 + 0] = (cbuf[i].ch.red << 3) | (cbuf[i].ch.red >> 2);
+        rgb888[i * 3 + 1] = (cbuf[i].ch.green << 2) | (cbuf[i].ch.green >> 4);
+        rgb888[i * 3 + 2] = (cbuf[i].ch.blue << 3) | (cbuf[i].ch.blue >> 2);
+    }
+    auto res = stbi_write_png(path, w, h, 3, rgb888.data(), w * 3);
+    MAP_LOG("draw_lvgl_to_png wrote %s [%dx%d] -> res %d", path, w, h, res);
 }
 
 // A minimal 4x4 rainbow png. starts with r, g, b, w, then more rainbow for the rest.
@@ -91,3 +115,16 @@ void LvglTestEnv::reset(uint16_t width, uint16_t height) {
         lv_canvas_fill_bg(canvas_, lv_color_hex(0x000000), LV_OPA_COVER);
     }
 }
+
+void LvglTestEnv::save() {
+    filesystem::path dir = filesystem::current_path() / "testoutputs";
+    try {
+        filesystem::create_directories(dir);
+        auto fn = dir / ("test_" + testname() + "_canvas.png");
+        draw_lvgl_png(&disp_drv_, fn.c_str());
+    } catch (const filesystem::filesystem_error& e) {
+        MAP_LOG("fs error %s", e.what());
+    }
+}
+
+} //fixtures
