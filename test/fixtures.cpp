@@ -58,3 +58,36 @@ TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img) {
     ofs.close();
 }
 void TmpFileHelper::rm() { remove(fn_.c_str()); }
+
+
+LvglTestEnv::LvglTestEnv(uint16_t width, uint16_t height) { reset(width, height); }
+
+LvglTestEnv::~LvglTestEnv() {
+    reset();
+}
+
+void LvglTestEnv::reset(uint16_t width, uint16_t height) {
+    width_ = width;
+    height_ = height;
+    buf_.resize(width_ * height_);
+    if (canvas_) {
+        lv_obj_del(canvas_);
+        canvas_ = nullptr;
+    }
+    if (width_ == 0 || height_ == 0) { //de-init
+        lv_deinit();
+    } else {
+        lv_init();
+        lv_disp_draw_buf_init(&draw_buf_, buf_.data(), NULL, width_ * height_);
+        lv_disp_drv_init(&disp_drv_);
+        disp_drv_.draw_buf = &draw_buf_;
+        disp_drv_.hor_res = width_;
+        disp_drv_.ver_res = height_;
+        disp_drv_.flush_cb = [](lv_disp_drv_t* d, const lv_area_t*, lv_color_t*) { lv_disp_flush_ready(d); };
+        lv_disp_drv_register(&disp_drv_);
+
+        canvas_ = lv_canvas_create(lv_scr_act());
+        lv_canvas_set_buffer(canvas_, buf_.data(), width_, height_, LV_IMG_CF_TRUE_COLOR);
+        lv_canvas_fill_bg(canvas_, lv_color_hex(0x000000), LV_OPA_COVER);
+    }
+}

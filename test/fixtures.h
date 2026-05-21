@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <lvgl.h>
 
 std::string fmtstr(const char* fmt, ... );
 std::string basename(const std::string& path);
@@ -15,4 +16,16 @@ struct TmpFileHelper {
     TmpFileHelper(const std::vector<uint8_t> &img);
     ~TmpFileHelper() { rm(); }
     void rm();
+};
+
+struct LvglTestEnv {
+    std::vector<lv_color_t> buf_;
+    lv_disp_drv_t disp_drv_;
+    lv_disp_draw_buf_t draw_buf_;
+    lv_obj_t* canvas_ = nullptr;
+    uint16_t width_ = 0, height_ = 0;
+
+    LvglTestEnv(uint16_t width, uint16_t height);
+    ~LvglTestEnv();
+    void reset(uint16_t width=0, uint16_t height=0);
 };

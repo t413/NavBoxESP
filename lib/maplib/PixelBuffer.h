@@ -8,6 +8,9 @@ typedef uint16_t pixel_t;
 #define GET_BLUE(color) (((color) & 0x001F) << 3)
 #define RGB(r, g, b) (uint16_t)((((r) & 0xF8) << 8) + (((g) & 0xFC) << 3) + (((b) & 0xF8) >> 3))
 
+struct _lv_obj_t;
+struct _lv_disp_drv_t;
+
 /// PixelBuffer, generic buffer to hold image data.
 class PixelBuffer {
 public:
@@ -24,6 +27,8 @@ public:
     bool valid() const { return width_ + height_ > 0 && data_ != nullptr; }
 
     bool loadImg(const char* path);
+
+    bool draw(_lv_obj_t* canvas, int x, int y) const;
 
     pixel_t* data_; // RGB565 data for LVGL compatibility
     coord_t width_, height_;
