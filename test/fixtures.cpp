@@ -75,8 +75,8 @@ const std::vector<uint8_t> png256hi = {
     0x60,0x82,
 };
 
-TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img) {
-    fn_ = fmtstr("/tmp/testpng_%d.png", img.size());
+TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img, string fn) {
+    fn_ = fn.empty()? fmtstr("/tmp/testpng_%d.png", img.size()) : fn;
     std::ofstream ofs(fn_, std::ios::binary);
     ofs.write((const char*) img.data(), img.size());
     ofs.close();
