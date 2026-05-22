@@ -116,6 +116,10 @@ void LvglTestEnv::reset(uint16_t width, uint16_t height) {
     }
 }
 
+void LvglTestEnv::draw() {
+    lv_task_handler();
+}
+
 void LvglTestEnv::save() {
     filesystem::path dir = filesystem::current_path() / "testoutputs";
     try {

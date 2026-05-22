@@ -11,6 +11,8 @@ public:
     struct TileCacheEntry {
         int z = -1, x = -1, y = -1;
         PixelBuffer buffer;
+        lv_img_dsc_t dsc_{};
+        lv_obj_t* img_obj = nullptr;
         uint32_t lastUsed = 0;
         bool is(int ox, int oy, int oz) const { return ox == x && oy == y && oz == z; }
         const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, uint32_t age);
@@ -20,16 +22,14 @@ public:
     MapRenderer() = default;
     ~MapRenderer();
 
-    bool begin(lv_obj_t* parent, lv_color_t* canvas_buffer, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize = 256);
+    bool begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize = 256);
+    void invalidate();
 
-    void setTilePathPattern(const char* pattern);
-    void handleDraw(lv_event_t* e = nullptr);
     void project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
     bool isVisible(lv_coord_t px, lv_coord_t py) const;
     void drawPosDot(double lat, double lon);
     void drawHomeMarker(double lat, double lon);
 
-    lv_obj_t* canvas() { return canvas_; }
     int   zoom() const { return zoom_; }
     double lat() const { return lat_; }
     double lon() const { return lon_; }
@@ -39,8 +39,7 @@ public:
     void panPx(int dx, int dy);
 
 private:
-    lv_obj_t* canvas_ = nullptr;
-    lv_color_t* canvas_buf_ = nullptr;  // Points to canvas's existing buffer
+    lv_obj_t* obj_ = nullptr;
     int16_t x_ = 0, y_ = 0;
     uint16_t width_ = 0, height_ = 0;
     uint16_t       tileSize_;
@@ -49,17 +48,18 @@ private:
     int            zoom_ = 10;
     TileCacheEntry cache_[TILECACHE_SIZE];
     uint32_t       renderCount_ = 0;
+    lv_obj_t*      posDot_ = nullptr;
+    lv_obj_t*      homeMarker_ = nullptr;
+    void _updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visible);
 
 public: //settings
-    uint32_t colBg_ = 0x000000;
-    uint32_t colAccent_ = 0xFF0000;
-    uint32_t colHome_ = 0x00FF00;
+    uint32_t colBg_ = 0x1A1A1A;
+    uint32_t colAccent_ = 0x24b9d7;
+    uint32_t colHome_ = 0x2ECC71; // #2ECC71
 
 public: //utility methods, helpful to unit test
     static void _latLonToTileF(double lat, double lon, int z, double& tx, double& ty);
     static double _latToTileY(double lat, int z);
     static double _tileYToLat(double ty, int z);
-    const PixelBuffer* _getTile(int z, int x, int y);
-    void _drawTiles();
-    void _drawNoTile(int px, int py);
+    void _updateTiles();
 };

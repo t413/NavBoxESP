@@ -34,6 +34,7 @@ struct LvglTestEnv {
     ~LvglTestEnv();
     void reset(uint16_t width=0, uint16_t height=0);
 
+    void draw();
     void save();
 };
 

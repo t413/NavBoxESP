@@ -1,6 +1,5 @@
 #include "PixelBuffer.h"
 #include "log.h"
-#include <lvgl.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
@@ -45,8 +44,7 @@ pixel_t* PixelBuffer::getPixelPtrAbs(coord_t x, coord_t y) {
 #include <SD.h>
 // STB callbacks for Arduino SD library
 static int stb_read(void* user, char* data, int size) {
-    File* f = static_cast<File*>(user);
-    return f->read((uint8_t*)data, size);
+    return static_cast<File*>(user)->read((uint8_t*)data, size);
 }
 static void stb_skip(void* user, int n) {
     File* f = static_cast<File*>(user);
@@ -116,22 +114,3 @@ bool PixelBuffer::loadImg(const char* path) {
     stbi_image_free(img);
     return true;
 }
-
-/// manually draw to the canvas to avoid clipping issues (can be drawn partially off screen)
-bool PixelBuffer::draw(_lv_obj_t* canvas, int x, int y) const {
-    lv_img_dsc_t* dsc = lv_canvas_get_img(canvas);
-    if (!dsc || !valid()) return false;
-    for (int j = 0; j < height_; j++) {
-        int canvasY = y + j;
-        if (canvasY < 0 || canvasY >= dsc->header.h) continue;
-
-        for (int i = 0; i < width_; i++) {
-            int canvasX = x + i;
-            if (canvasX < 0 || canvasX >= dsc->header.w) continue;
-
-            ((uint16_t*)dsc->data)[canvasY * dsc->header.w + canvasX] = data_[j * width_ + i];
-        }
-    }
-    return true;
-}
-

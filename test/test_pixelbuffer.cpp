@@ -50,14 +50,5 @@ TEST(PixelBuffer, PixelBuffer_LoadImg) {
     EXPECT_EQ(pb.getData()[3], RGB(255, 255, 255));
 }
 
-TEST(PixelBuffer, draw_with_clipping) {
-    fixtures::LvglTestEnv env(300, 320);
-    fixtures::TmpFileHelper file(fixtures::png256hi);
-    PixelBuffer pb;
-    EXPECT_TRUE(pb.loadImg(file.fn_.c_str()));
 
-    pb.draw(env.canvas_, -10, -10); //partially off-screen to the top left
-    pb.draw(env.canvas_, 250, 250); //mostly off-screen to the bottom right
 
-    env.save();
-}

@@ -15,16 +15,30 @@ std::string tilePath(int z, int x, int y) {
     return fmtstr(TILE_FMT.c_str(), z, x, y);
 }
 
+TEST(MapRenderer, latlonToTile) {
+    double x,y;
+    MapRenderer::_latLonToTileF(37.87, -122.32, 14, x, y);
+    MAP_LOG("xy %.2f, %.2f", x, y);
+    EXPECT_EQ((int) x, 2625);
+    EXPECT_EQ((int) y, 6327);
+
+    MapRenderer::_latLonToTileF(37.87, -122.32, 17, x, y);
+    MAP_LOG("xy %.2f, %.2f", x, y);
+    EXPECT_EQ((int) x, 21000);
+    EXPECT_EQ((int) y, 50618);
+}
+
 TEST(MapRenderer, SetupAndProjection) {
     fixtures::LvglTestEnv env(240, 135);
     fixtures::TmpFileHelper file(fixtures::png256hi, tilePath(TEST_Z, TEST_X, TEST_Y));
 
     MapRenderer map;
-    auto ret = map.begin(env.canvas_, env.buf_.data(), env.width_, env.height_, TILE_FMT.c_str());
+    auto ret = map.begin(env.canvas_, env.width_, env.height_, TILE_FMT.c_str());
     EXPECT_TRUE(ret);
 
-    // Set center to 0,0 at zoom 10
-    map.handleDraw();
+    map.invalidate();
+    env.draw(); //do a full lvgl render
+
     double tx = 0, ty = 0;
     map._latLonToTileF(map.lat(), map.lon(), map.zoom(), tx, ty);
     MAP_LOG("<0.0,0.0> -> %0.2f, %0.2f", tx, ty);
@@ -41,7 +55,7 @@ TEST(MapRenderer, SetupAndProjection) {
 
 TEST(MapRenderer, PanLogic) {
     MapRenderer map;
-    map.begin(NULL, NULL, 300, 300, TILE_FMT.c_str());
+    map.begin(NULL, 300, 300, TILE_FMT.c_str());
 
     for (uint8_t z = 2; z < 18; z++) {
         map.setCenter(0.0, 0.0);
