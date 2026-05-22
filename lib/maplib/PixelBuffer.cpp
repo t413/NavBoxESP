@@ -1,11 +1,6 @@
 #include "PixelBuffer.h"
 #include "log.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_NO_STDIO
-#define STBI_ONLY_PNG
-#define STBI_ONLY_JPEG
-#include "stb_image.h"
+#include <PNGdec.h>
 
 
 PixelBuffer::~PixelBuffer() {
@@ -40,77 +35,48 @@ pixel_t* PixelBuffer::getPixelPtrAbs(coord_t x, coord_t y) {
     return &data_[y * width_ + x];
 }
 
+static PNG _png;
+
 #ifdef ARDUINO
 #include <SD.h>
-// STB callbacks for Arduino SD library
-static int stb_read(void* user, char* data, int size) {
-    return static_cast<File*>(user)->read((uint8_t*)data, size);
+static void * png_open(const char *fn, int32_t *s) {
+    File *f = new File(SD.open(fn));
+    if (!f || !*f) { if (f) delete f; return nullptr; }
+    *s = f->size(); return (void *)f;
 }
-static void stb_skip(void* user, int n) {
-    File* f = static_cast<File*>(user);
-    f->seek(f->position() + n);
-}
-static int stb_eof(void* user) {
-    File* f = static_cast<File*>(user);
-    return !f->available();
-}
+static void png_close(void *h) { File *f = (File *)h; if (f) { f->close(); delete f; } }
+static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return static_cast<File *>(h->fHandle)->read(b, l); }
+static int32_t png_seek(PNGFILE *h, int32_t p) { return static_cast<File *>(h->fHandle)->seek(p); }
 #else
-// STB callbacks for standard C++ FILE (for unit testing)
-static int stb_read(void* user, char* data, int size) {
-    return fread(data, 1, size, (FILE*)user);
+static void * png_open(const char *fn, int32_t *s) {
+    FILE *f = fopen(fn, "rb"); if (!f) return nullptr;
+    fseek(f, 0, SEEK_END); *s = ftell(f); fseek(f, 0, SEEK_SET); return (void *)f;
 }
-static void stb_skip(void* user, int n) {
-    fseek((FILE*)user, n, SEEK_CUR);
-}
-static int stb_eof(void* user) {
-    return feof((FILE*)user);
-}
+static void png_close(void *h) { if (h) fclose((FILE *)h); }
+static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return fread(b, 1, l, (FILE *)h->fHandle); }
+static int32_t png_seek(PNGFILE *h, int32_t p) { return fseek((FILE *)h->fHandle, p, SEEK_SET) == 0; }
 #endif
+
+static int png_draw(PNGDRAW *p) {
+    PixelBuffer *pb = (PixelBuffer *)p->pUser;
+    _png.getLineAsRGB565(p, pb->getPixelPtrAbs(0, p->y), PNG_RGB565_LITTLE_ENDIAN, 0);
+    return 1; //continue decoding
+}
+
+int freeHeap(); //in maprenderer.cpp
 
 bool PixelBuffer::loadImg(const char* path) {
-    if ((path == nullptr) || (path[0] == 0)) return false;
-    stbi_io_callbacks callbacks = {stb_read, stb_skip, stb_eof};
-    void* fh = nullptr;
-#ifdef ARDUINO
-    File f = SD.open(path);
-    if (!f) return false;
-    fh = &f;
-#else
-    FILE* f = fopen(path, "rb");
-    if (!f) return false;
-    fh = f;
-#endif
+    if (!path || !path[0]) return false;
+    if (_png.open(path, png_open, png_close, png_read, png_seek, png_draw) != PNG_SUCCESS) return false;
 
-    int imgW, imgH, n;
-    constexpr int req_comp = 3;
-    unsigned char *img = stbi_load_from_callbacks(&callbacks, fh, &imgW, &imgH, &n, req_comp);
-#ifdef ARDUINO
-    f.close();
-#else
-    fclose(f);
-#endif
-
-    if (!img) {
-        MAP_LOG("loadBitmap(%s) failed: %s\n", path, stbi_failure_reason());
-        return false;
-    }
-    if (data_) {
-        MAP_LOG("loadBitmap(%s) clearing existing img first\n", path);
-        clear();
-    }
-    if (!allocate(imgW, imgH)) {
-        stbi_image_free(img);
-        return false;
+    MAP_LOG("pxl::load %s opened (free: %u)", path, freeHeap());
+    if (!allocate(_png.getWidth(), _png.getHeight())) {
+        MAP_LOG("pxl::load failed, OOM (free: %u)", freeHeap());
+        _png.close(); return false;
     }
 
-    auto dest = getPixelPtrAbs(0, 0);
-    // RGB888 to RGB565
-    for (uint32_t i = 0; i < (uint32_t)imgW * imgH; i++) {
-        uint8_t r = img[i * req_comp + 0];
-        uint8_t g = img[i * req_comp + 1];
-        uint8_t b = img[i * req_comp + 2];
-        dest[i] = RGB(r, g, b);
-    }
-    stbi_image_free(img);
-    return true;
+    int rc = _png.decode(this, 0);
+    _png.close();
+    MAP_LOG("pxl::load %s finished (free: %u)", path, freeHeap());
+    return rc == PNG_SUCCESS;
 }

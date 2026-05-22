@@ -45,7 +45,7 @@ private:
     uint16_t       tileSize_;
     const char*    pathPattern_ = nullptr;
     double         lat_ = 0, lon_ = 0;
-    int            zoom_ = 10;
+    int            zoom_ = 14;
     TileCacheEntry cache_[TILECACHE_SIZE];
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;
@@ -63,3 +63,5 @@ public: //utility methods, helpful to unit test
     static double _tileYToLat(double ty, int z);
     void _updateTiles();
 };
+
+int freeHeap();

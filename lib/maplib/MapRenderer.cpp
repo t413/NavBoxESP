@@ -6,7 +6,7 @@ static constexpr const double DEG_2_RAD = M_PI / 180;
 const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, uint32_t age) {
     char path[128];
     snprintf(path, sizeof(path), fmt, oz, ox, oy);
-    MAP_LOG("tile::load trying %s (free: %u)", path, ESP.getFreeHeap());
+    MAP_LOG("tile::load trying %s (free: %u)", path, freeHeap());
     if (buffer.loadImg(path)) {
         z = oz, x = ox, y = oy, lastUsed = age;
         dsc_.header.always_zero = 0;
@@ -158,7 +158,7 @@ void MapRenderer::_updateTiles() {
     }
 
     // Step 2: Load missing tiles into oldest unused slots
-    for (int i = 0; i < 4; i++) {
+    for (int i = 3; i >= 0; i--) {
         if (slots[i].ok || slots[i].y < 0 || slots[i].y >= nTiles) continue;
         int best = -1; uint32_t oldest = 0xFFFFFFFF;
         for (int j = 0; j < TILECACHE_SIZE; j++) {
@@ -187,4 +187,12 @@ void MapRenderer::_updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visib
     } else {
         lv_obj_add_flag(cache_[idx].img_obj, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+int freeHeap() {
+    #ifdef ARDUINO
+    return ESP.getFreeHeap();
+    #else
+    return -1;
+    #endif
 }
