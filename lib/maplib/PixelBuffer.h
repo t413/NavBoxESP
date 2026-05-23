@@ -28,15 +28,15 @@ public:
     /// left/right crop is saved as offsetN_, right/bttm values become the new width/heights, 0 crops none
     bool loadImg(const char* path, const Bounds &);
 
-    coord_t getOffsetX() const { return offsetX_; }
-    coord_t getOffsetY() const { return offsetY_; }
+    int getOffsetX() const { return offsetX_; }
+    int getOffsetY() const { return offsetY_; }
     bool isSparse() const { return offsetX_ != 0 || offsetY_ != 0; }
 
     pixel_t* data_; // RGB565 data for LVGL compatibility
     coord_t width_, height_;
 
 private:
-    coord_t offsetX_, offsetY_;  // Offset within original image for sparse buffers
+    int offsetX_, offsetY_;  // Offset within original image for sparse buffers
 };
 
 struct Bounds {

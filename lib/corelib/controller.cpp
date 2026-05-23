@@ -16,8 +16,8 @@ void Controller::iterate(uint32_t now) {
     if (gps_.iterate(now)) {
         auto loc = gps_.toPoint();
         if (map_.lat() == DEFAULT_LAT && loc.lat != 0.0) {
+            map_.setHome(loc.lat, loc.lon);
             map_.setCenter(loc.lat, loc.lon);
-            map_.drawHomeMarker(loc.lat, loc.lon);
             MAP_LOG("ctrl set initial center+home");
         } else {
             lv_coord_t px, py;
@@ -27,7 +27,6 @@ void Controller::iterate(uint32_t now) {
             }
         }
         MAP_LOG("ctrl draw <%5.5f,%5.5f>", loc.lat, loc.lon);
-        map_.drawPosDot(loc.lat, loc.lon);
-        map_.invalidate();
+        map_.setDot(loc.lat, loc.lon);
     }
 }

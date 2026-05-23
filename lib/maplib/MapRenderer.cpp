@@ -39,7 +39,7 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     }
     obj_ = lv_obj_create(parent);
     lv_obj_set_size(obj_, width_, height_);
-    lv_obj_set_pos(obj_, 0, 0);
+    lv_obj_set_pos(obj_, x_, y_);
     lv_obj_set_style_pad_all(obj_, 0, 0);
     lv_obj_set_style_border_width(obj_, 0, 0);
     lv_obj_set_style_radius(obj_, 0, 0);
@@ -74,51 +74,66 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     return true;
 }
 
+void MapRenderer::setXY(uint16_t x, uint16_t y) { lv_obj_set_pos(obj_, (x_ = x), (y_ = y)); }
+
 void MapRenderer::invalidate() {
     _updateTiles();
 }
 
-void MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const {
+bool MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const {
     double tx, ty;
     _latLonToTileF(lat, lon, zoom_, tx, ty);
     double cx, cy;
-    _latLonToTileF(lat_, lon_, zoom_, cx, cy);
+    _latLonToTileF(mapCenter_.lat, mapCenter_.lon, zoom_, cx, cy);
     px = (lv_coord_t)round((tx - cx) * tileSize_ + width_ / 2);
     py = (lv_coord_t)round((ty - cy) * tileSize_ + height_ / 2);
-}
-
-void MapRenderer::drawPosDot(double lat, double lon) {
-    lv_coord_t px, py;
-    project(lat, lon, px, py);
-    if (posDot_) {
-        if (isVisible(px, py)) {
-            lv_obj_clear_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_pos(posDot_, px - 5, py - 5);
-        } else lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
-    }
+    return isVisible(px, py);
 }
 
 bool MapRenderer::isVisible(lv_coord_t px, lv_coord_t py) const {
-    return px >= x_ && px < (width_ + x_) && py >= y_ && py < (height_ + y_);
+    return px >= 0 && px < width_ && py >= 0 && py < height_;
 }
 
-void MapRenderer::drawHomeMarker(double lat, double lon) {
-    lv_coord_t px, py;
-    project(lat, lon, px, py);
+void MapRenderer::setDot(double lat, double lon) {
+    dot_ = {lat, lon};
+    _updateMarkers();
+}
+void MapRenderer::setHome(double lat, double lon) {
+    home_ = {lat, lon};
+    _updateMarkers();
+}
 
-    if (homeMarker_) {
-        if (isVisible(px, py)) {
-            lv_obj_clear_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_set_pos(homeMarker_, px - 8, py - 8);
-        } else lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
-    }
+void MapRenderer::setCenter(double lat, double lon, int zoom) {
+    mapCenter_ = { lat, lon };
+    if (zoom > 0 && zoom < 20) zoom_ = zoom;
+    _updateTiles();
+}
+void MapRenderer::setZoom(int z) {
+    zoom_ = (z < 0) ? 0 : (z > 20 ? 20 : z);
+    _updateTiles();
+}
+
+void MapRenderer::_updateMarkers() {
+    if (!posDot_ || !homeMarker_) return;
+    lv_coord_t px = -1, py = -1;
+
+    if (dot_ && project(dot_.lat, dot_.lon, px, py)) {
+        lv_obj_clear_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(posDot_, px - lv_obj_get_width(posDot_) / 2, py - lv_obj_get_height(posDot_) / 2);
+        // lv_obj_invalidate(posDot_);
+    } else lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
+
+    if (home_ && project(home_.lat, home_.lon, px, py)) {
+        lv_obj_clear_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(homeMarker_, px - lv_obj_get_width(homeMarker_) / 2, py - lv_obj_get_height(homeMarker_) / 2);
+    } else lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
 }
 
 void MapRenderer::panPx(int dx, int dy) {
     double scale = (double)tileSize_ * pow(2.0, zoom_);
-    lon_ += dx / scale * 360.0;
-    double ty = _latToTileY(lat_, zoom_) + (double)dy / tileSize_;
-    lat_ = _tileYToLat(ty, zoom_);
+    mapCenter_.lon += dx / scale * 360.0;
+    double ty = _latToTileY(mapCenter_.lat, zoom_) + (double)dy / tileSize_;
+    mapCenter_.lat = _tileYToLat(ty, zoom_);
     _updateTiles();
 }
 
@@ -157,77 +172,80 @@ int MapRenderer::_findSlot() {
 
 void MapRenderer::_updateTiles() {
     if (!obj_) return;
-    double tx, ty; _latLonToTileF(lat_, lon_, zoom_, tx, ty);
+    double tx, ty; _latLonToTileF(mapCenter_.lat, mapCenter_.lon, zoom_, tx, ty);
     int nTiles = (int)pow(2.0, zoom_);
 
-    int tx_s = (int)floor(tx - (double)width_ / 2 / tileSize_);
-    int ty_s = (int)floor(ty - (double)height_ / 2 / tileSize_);
-    lv_coord_t px_s = (lv_coord_t)round((tx_s - tx) * tileSize_ + width_ / 2.0);
-    lv_coord_t py_s = (lv_coord_t)round((ty_s - ty) * tileSize_ + height_ / 2.0);
+    const int tx_s = (int)floor(tx - (double)width_ / 2 / tileSize_);
+    const int ty_s = (int)floor(ty - (double)height_ / 2 / tileSize_);
+    const int px_s = (lv_coord_t)round((tx_s - tx) * tileSize_ + width_ / 2.0);
+    const int py_s = (lv_coord_t)round((ty_s - ty) * tileSize_ + height_ / 2.0);
+    MAP_LOG("MAP TILING START z%d #%d [%d,%d,%d,%d]", zoom_, nTiles, tx_s, ty_s, px_s, py_s);
 
-    for (int j = 0; j < TILECACHE_SIZE; j++) cache_[j].onscreen = 0;
+    for (int j = 0; j < TILECACHE_SIZE; j++) cache_[j].onscreen = 0; //reset all
+    struct TileSlot { int x,y; int tx,ty; };
+    TileSlot missing[TILECACHE_SIZE] = {0};
+    uint8_t missingIdx = 0;
 
     // Step 1: Identify and mark existing tiles in cache
     for (uint8_t i = 0; i < 4; i++) {
-        int x = ((tx_s + (i % 2)) % nTiles + nTiles) % nTiles;
-        int y = ty_s + (i / 2);
+        const int x = ((tx_s + (i % 2)) % nTiles + nTiles) % nTiles; // osm [z/x/y]
+        const int y = ty_s + (i / 2);
         if (y < 0 || y >= nTiles) continue;
+        const int tx = px_s + (i % 2) * (int)tileSize_; //onscreen pixel dest
+        const int ty = py_s + (i / 2) * (int)tileSize_;
 
         int idx = _findTile(x, y, zoom_);
-        if (idx != -1) {
-            cache_[idx].onscreen = 1;
-            pixel_t tx = px_s + (i % 2) * (int)tileSize_;
-            pixel_t ty = py_s + (i / 2) * (int)tileSize_;
-            _updateTileObj(idx, tx, ty, true);
-            MAP_LOG("tile[%d] updated existing at p<%d,%d>", i, tx, ty);
+        if (idx != -1) { //found pre-loaded
+            _updateTileObj(cache_[idx], tx, ty, true);
+            MAP_LOG("tile[%d] updated existing at p<%d,%d>", idx, tx, ty);
+        } else { //add to missing
+            missing[missingIdx++] = { x,y, tx,ty };
         }
     }
 
     // Step 2: Load missing tiles into oldest available slots
-    for (uint8_t i = 0; i < 4; i++) {
-        int x = ((tx_s + (i % 2)) % nTiles + nTiles) % nTiles;
-        int y = ty_s + (i / 2);
-        if (y < 0 || y >= nTiles || _findTile(x, y, zoom_) != -1) continue;
+    for (uint8_t slotidx = 0; slotidx < missingIdx; slotidx++) {
+        const auto& m = missing[slotidx];
 
-        int best = _findSlot();
-        if (best != -1) {
-            lv_coord_t tx_px = px_s + (i % 2) * (int)tileSize_;
-            lv_coord_t ty_py = py_s + (i / 2) * (int)tileSize_;
-
+        int newIdx = _findSlot();
+        if (newIdx != -1) { // found empty slot
+            auto& tile = cache_[newIdx];
             Bounds crop;
-            if (cropmode_) {
-                MAP_LOG("tile[%d] p<%d,%d> to <%d,%d>", i, tx_px, ty_py, tx_px + tileSize_, ty_py + tileSize_);
-                crop.left  = (coord_t)std::max(0, -tx_px);
-                crop.top   = (coord_t)std::max(0, -ty_py);
-                crop.right = (coord_t)std::min((int)tileSize_, (int)width_ - tx_px);
-                crop.bttm  = (coord_t)std::min((int)tileSize_, (int)height_ - ty_py);
-                MAP_LOG("tile[%d] offsets <l%d t%d r%d b%d>", i, crop.left, crop.top, crop.right, crop.bttm);
+            if (cropmode_) { //optionally limit the memory usage
+                crop.left  = (coord_t)std::max(0, -m.tx);
+                crop.top   = (coord_t)std::max(0, -m.ty);
+                crop.right = (coord_t)std::min((int)tileSize_, (int)width_ - m.tx) - 1; //TODO temp 1px offset to see bounds
+                crop.bttm  = (coord_t)std::min((int)tileSize_, (int)height_ - m.ty) - 1; //TODO temp 1px offset to see bounds
             }
 
-            if (cache_[best].load(x, y, zoom_, pathPattern_, crop)) {
-                cache_[best].onscreen = 1;
-                lv_img_set_src(cache_[best].img_obj, &cache_[best].dsc_);
-                _updateTileObj(best, tx_px, ty_py, true);
+            if (tile.load(m.x, m.y, zoom_, pathPattern_, crop)) {
+                lv_img_set_src(tile.img_obj, &tile.dsc_);
+                _updateTileObj(tile, m.tx, m.ty, true);
+                MAP_LOG("tile[%d] new tile at p<%d,%d>", newIdx, m.tx, m.ty);
             } else {
-                cache_[best].z = -1;
+                tile.z = -1;
             }
         }
     }
 
     for (int j = 0; j < TILECACHE_SIZE; j++)
         if (!cache_[j].onscreen)
-            _updateTileObj(j, 0, 0, false);
+            _updateTileObj(cache_[j], 0, 0, false);
+
+    _updateMarkers();
 }
 
-void MapRenderer::_updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visible) {
+void MapRenderer::_updateTileObj(TileCacheEntry& tile, int x, int y, bool visible) {
     if (visible) {
-        lv_coord_t adjustedX = x + cache_[idx].buffer.getOffsetX();
-        lv_coord_t adjustedY = y + cache_[idx].buffer.getOffsetY();
-        lv_obj_set_pos(cache_[idx].img_obj, adjustedX, adjustedY);
-        lv_obj_clear_flag(cache_[idx].img_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_coord_t adjustedX = x + tile.buffer.getOffsetX();
+        lv_coord_t adjustedY = y + tile.buffer.getOffsetY();
+        MAP_LOG("tile set pos [%d, %d] -> [%d, %d]", x,y, adjustedX, adjustedY);
+        lv_obj_set_pos(tile.img_obj, adjustedX, adjustedY);
+        lv_obj_clear_flag(tile.img_obj, LV_OBJ_FLAG_HIDDEN);
     } else {
-        lv_obj_add_flag(cache_[idx].img_obj, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(tile.img_obj, LV_OBJ_FLAG_HIDDEN);
     }
+    tile.onscreen = visible;
 }
 
 int freeHeap() {

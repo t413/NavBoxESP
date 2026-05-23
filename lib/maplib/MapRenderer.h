@@ -4,10 +4,19 @@
 #include <vector>
 #include <lvgl.h>
 #include <algorithm>
+#include <limits.h>
 #include "PixelBuffer.h"
 
 constexpr double DEFAULT_LAT = 37.8044;
 constexpr double DEFAULT_LON = -122.2712;
+constexpr double NO_LOCATION = (double)(INT_MIN);
+constexpr int ZOOM_UNCHANGED = -1;
+
+struct LatLon {
+    double lat = 0, lon = 0;
+    LatLon(double l = NO_LOCATION, double n = NO_LOCATION) : lat(l), lon(n) { }
+    operator bool() const { return lat != NO_LOCATION && lon != NO_LOCATION; }
+};
 
 class MapRenderer {
 public:
@@ -26,20 +35,22 @@ public:
     ~MapRenderer();
 
     bool begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize = 256);
+    void setXY(uint16_t x, uint16_t y);
     void invalidate();
 
-    void project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
+    bool project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
     bool isVisible(lv_coord_t px, lv_coord_t py) const;
-    void drawPosDot(double lat, double lon);
-    void drawHomeMarker(double lat, double lon);
+
+    void setCenter(double lat, double lon, int zoom = ZOOM_UNCHANGED); ///Sets the map's center view
+    void setZoom(int z);
+    void panPx(int dx, int dy);
+    void setDot(double lat, double lon);
+    void setHome(double lat, double lon);
 
     int   zoom() const { return zoom_; }
-    double lat() const { return lat_; }
-    double lon() const { return lon_; }
-
-    void setCenter(double lat, double lon) { lat_ = lat; lon_ = lon; }
-    void setZoom(int z) { zoom_ = (z < 0) ? 0 : (z > 20 ? 20 : z); }
-    void panPx(int dx, int dy);
+    double lat() const { return mapCenter_.lat; }
+    double lon() const { return mapCenter_.lon; }
+    LatLon getCenter() const { return mapCenter_; }
 
 private:
     lv_obj_t* obj_ = nullptr;
@@ -47,13 +58,14 @@ private:
     uint16_t width_ = 0, height_ = 0;
     uint16_t       tileSize_;
     const char*    pathPattern_ = nullptr;
-    double         lat_ = DEFAULT_LAT, lon_ = DEFAULT_LON;
     int            zoom_ = 12;
     TileCacheEntry cache_[TILECACHE_SIZE];
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;
     lv_obj_t*      homeMarker_ = nullptr;
-    void _updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visible);
+    LatLon mapCenter_ = {DEFAULT_LAT, DEFAULT_LON};
+    LatLon dot_, home_;
+    void _updateTileObj(TileCacheEntry& tile, int x, int y, bool visible);
 
 public: //settings
     uint32_t colBg_ = 0x640d5c; // #640d5c
@@ -68,6 +80,7 @@ public: //utility methods, helpful to unit test
     int _findTile(int x, int y, int z);
     int _findSlot();
     void _updateTiles();
+    void _updateMarkers();
 };
 
 int freeHeap();
