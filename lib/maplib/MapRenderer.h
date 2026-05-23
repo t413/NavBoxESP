@@ -13,7 +13,6 @@ public:
         PixelBuffer buffer;
         lv_img_dsc_t dsc_{};
         lv_obj_t* img_obj = nullptr;
-        uint32_t lastUsed = 0;
         int onscreen = 0; //set while iterating over tiles
         bool is(int ox, int oy, int oz) const { return ox == x && oy == y && oz == z; }
         const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, const Bounds &);
@@ -57,11 +56,14 @@ public: //settings
     uint32_t colBg_ = 0x1A1A1A;
     uint32_t colAccent_ = 0x24b9d7;
     uint32_t colHome_ = 0x2ECC71; // #2ECC71
+    bool cropmode_ = false;
 
 public: //utility methods, helpful to unit test
     static void _latLonToTileF(double lat, double lon, int z, double& tx, double& ty);
     static double _latToTileY(double lat, int z);
     static double _tileYToLat(double ty, int z);
+    int _findTile(int x, int y, int z);
+    int _findSlot();
     void _updateTiles();
 };
 
