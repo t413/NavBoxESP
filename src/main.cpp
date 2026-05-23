@@ -62,11 +62,12 @@ void loop() {
 }
 
 static void _setupLvgl(int dispW, int dispH) {
-    MAP_LOG("lvgl init start (free: %u)", ESP.getFreeHeap());
+    MAP_LOG("lvgl init start %dx%d (free: %u)", dispW, dispH, ESP.getFreeHeap());
     lv_init();
     const int bufsize = dispW * 20;
     _buf1 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
     _buf2 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
+    MAP_LOG("lvgl init made bufs (free: %u)", ESP.getFreeHeap());
 
     lv_disp_draw_buf_init(&_dispBuf, _buf1, _buf2, bufsize);
     lv_disp_drv_init(&_dispDrv);

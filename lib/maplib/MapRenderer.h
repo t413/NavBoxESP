@@ -6,6 +6,9 @@
 #include <algorithm>
 #include "PixelBuffer.h"
 
+constexpr double DEFAULT_LAT = 37.8044;
+constexpr double DEFAULT_LON = -122.2712;
+
 class MapRenderer {
 public:
     struct TileCacheEntry {
@@ -44,8 +47,8 @@ private:
     uint16_t width_ = 0, height_ = 0;
     uint16_t       tileSize_;
     const char*    pathPattern_ = nullptr;
-    double         lat_ = 0, lon_ = 0;
-    int            zoom_ = 14;
+    double         lat_ = DEFAULT_LAT, lon_ = DEFAULT_LON;
+    int            zoom_ = 12;
     TileCacheEntry cache_[TILECACHE_SIZE];
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;
@@ -53,7 +56,7 @@ private:
     void _updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visible);
 
 public: //settings
-    uint32_t colBg_ = 0x1A1A1A;
+    uint32_t colBg_ = 0x640d5c; // #640d5c
     uint32_t colAccent_ = 0x24b9d7;
     uint32_t colHome_ = 0x2ECC71; // #2ECC71
     bool cropmode_ = false;
