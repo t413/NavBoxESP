@@ -3,12 +3,12 @@
 
 static constexpr const double DEG_2_RAD = M_PI / 180;
 
-const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, uint32_t age) {
+const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, const Bounds& bounds) {
     char path[128];
     snprintf(path, sizeof(path), fmt, oz, ox, oy);
     MAP_LOG("tile::load trying %s (free: %u)", path, freeHeap());
-    if (buffer.loadImg(path)) {
-        z = oz, x = ox, y = oy, lastUsed = age;
+    if (buffer.loadImg(path, bounds)) {
+        z = oz, x = ox, y = oy, onscreen = 0;
         dsc_.header.always_zero = 0;
         dsc_.header.w = buffer.width_;
         dsc_.header.h = buffer.height_;
@@ -181,7 +181,9 @@ void MapRenderer::_updateTiles() {
 
 void MapRenderer::_updateTileObj(int idx, lv_coord_t x, lv_coord_t y, bool visible) {
     if (visible) {
-        lv_obj_set_pos(cache_[idx].img_obj, x, y);
+        lv_coord_t adjustedX = x + cache_[idx].buffer.getOffsetX();
+        lv_coord_t adjustedY = y + cache_[idx].buffer.getOffsetY();
+        lv_obj_set_pos(cache_[idx].img_obj, adjustedX, adjustedY);
         lv_obj_clear_flag(cache_[idx].img_obj, LV_OBJ_FLAG_HIDDEN);
         cache_[idx].lastUsed = renderCount_;
     } else {

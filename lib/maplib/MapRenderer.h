@@ -14,8 +14,9 @@ public:
         lv_img_dsc_t dsc_{};
         lv_obj_t* img_obj = nullptr;
         uint32_t lastUsed = 0;
+        int onscreen = 0; //set while iterating over tiles
         bool is(int ox, int oy, int oz) const { return ox == x && oy == y && oz == z; }
-        const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, uint32_t age);
+        const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, const Bounds &);
     };
     static constexpr uint8_t TILECACHE_SIZE = 4;
 
