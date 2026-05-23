@@ -39,6 +39,11 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     }
     obj_ = lv_obj_create(parent);
     lv_obj_set_size(obj_, width_, height_);
+    lv_obj_set_pos(obj_, 0, 0);
+    lv_obj_set_style_pad_all(obj_, 0, 0);
+    lv_obj_set_style_border_width(obj_, 0, 0);
+    lv_obj_set_style_radius(obj_, 0, 0);
+    lv_obj_set_scrollbar_mode(obj_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(obj_, lv_color_hex(colBg_), 0);
 
     // Create fixed image objects for the 2x2 grid
@@ -54,6 +59,7 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     lv_obj_set_style_bg_color(homeMarker_, lv_color_hex(colHome_), 0);
     lv_obj_set_style_border_color(homeMarker_, lv_color_white(), 0);
     lv_obj_set_style_border_width(homeMarker_, 2, 0);
+    lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_t* label = lv_label_create(homeMarker_);
     lv_label_set_text(label, "H");
     lv_obj_center(label);
@@ -64,6 +70,7 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     lv_obj_set_style_bg_color(posDot_, lv_color_hex(colAccent_), 0);
     lv_obj_set_style_border_color(posDot_, lv_color_white(), 0);
     lv_obj_set_style_border_width(posDot_, 2, 0);
+    lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
     return true;
 }
 

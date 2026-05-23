@@ -27,7 +27,8 @@ struct LvglTestEnv {
     std::vector<lv_color_t> buf_;
     lv_disp_drv_t disp_drv_;
     lv_disp_draw_buf_t draw_buf_;
-    lv_obj_t* canvas_ = nullptr;
+    lv_disp_t* disp_ = nullptr;
+    lv_obj_t* base_ = nullptr;
     uint16_t width_ = 0, height_ = 0;
 
     LvglTestEnv(uint16_t width, uint16_t height);
@@ -35,7 +36,7 @@ struct LvglTestEnv {
     void reset(uint16_t width=0, uint16_t height=0);
 
     void draw();
-    void save();
+    void save(std::string suffix="_canvas");
 };
 
 } //fixtures

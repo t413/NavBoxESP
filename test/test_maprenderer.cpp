@@ -33,7 +33,7 @@ TEST(MapRenderer, SetupAndProjection) {
     fixtures::TmpFileHelper file(fixtures::png256hi, tilePath(TEST_Z, TEST_X, TEST_Y));
 
     MapRenderer map;
-    auto ret = map.begin(env.canvas_, env.width_, env.height_, TILE_FMT.c_str());
+    auto ret = map.begin(env.base_, env.width_, env.height_, TILE_FMT.c_str());
     EXPECT_TRUE(ret);
 
     map.invalidate();
