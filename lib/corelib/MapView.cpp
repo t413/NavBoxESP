@@ -150,13 +150,13 @@ void MapView::_createSidebar(lv_obj_t* parent) {
 }
 
 void MapView::_updateSidebar(const TrackPoint* point) {
-    bool fixed = gps_ && gps_->hasFix();
+    bool fixed = gps_ && point && gps_->hasFix();
     int hdop = gps_ && gps_->hdop();
     lv_color_t dotColor = fixed ? (hdop < 2.0f ? lv_color_hex(0x3FB950) : lv_color_hex(0xD29922)) : lv_color_hex(0xFF7B72);
     lv_obj_set_style_bg_color(gpsDot_, dotColor, 0);
 
     char buf[16];
-    snprintf(buf, 16, fixed ? "%d" : "--", gps_? gps_->satellites() : -1);
+    snprintf(buf, 16, fixed ? "%d" : "--", fixed? gps_->satellites() : -1);
     lv_label_set_text(satLabel_, buf);
 
     // Battery status
@@ -165,10 +165,10 @@ void MapView::_updateSidebar(const TrackPoint* point) {
         lv_label_set_text(battLabel_, buf);
     }
 
-    snprintf(buf, 16, fixed ? "%.0f" : "--", gps_? gps_->speedMs() * 3.6f : 0);
+    snprintf(buf, 16, fixed ? "%.0f" : "--", fixed? gps_->speedMs() * 3.6f : 0.0f);
     lv_label_set_text(speedLabel_, buf);
 
-    snprintf(buf, 16, fixed ? "%dm" : "--", (int)(point? point->alt : 0));
+    snprintf(buf, 16, fixed ? "%dm" : "--", (int)(fixed? point->alt : 0));
     lv_label_set_text(altLabel_, buf);
 
     // Distance to marked home
