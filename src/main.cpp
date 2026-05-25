@@ -29,7 +29,7 @@ void setup() {
     M5.Display.setBrightness(180);
 
     Serial.begin(115200);
-    for (uint8_t i = 0; i < 10; i++) {
+    for (uint8_t i = 0; i < 1; i++) {
         delay(100);
         MAP_LOG("Starting up (%u) (free: %u)", i, ESP.getFreeHeap());
     }

@@ -1,5 +1,7 @@
 #include "controller.h"
+#include "MapView.h"
 #include <log.h>
+#include <M5Cardputer.h>
 
 Controller::Controller() {
 }
@@ -7,26 +9,60 @@ Controller::Controller() {
 void Controller::setup(lv_obj_t* parent) {
     gps_.begin(Serial1);
 
-    // Initialize Map on the provided parent (the active screen)
-    map_.begin(parent, 240, 135, "/osm/%d/%d/%d.png");
-    map_.setZoom(14);
+    // Initialize views
+    views_[(int)ViewID::MAP] = new MapView();
+    views_[(int)ViewID::TEST] = new TestView();
+
+    for (int i = 0; i < (int)ViewID::COUNT; i++) {
+        if (views_[i]) views_[i]->create(parent);
+    }
+
+    _switchView(ViewID::MAP);
 }
 
 void Controller::iterate(uint32_t now) {
+    // 1. Update GPS/State
     if (gps_.iterate(now)) {
-        auto loc = gps_.toPoint();
-        if (map_.lat() == DEFAULT_LAT && loc.lat != 0.0) {
-            map_.setHome(loc.lat, loc.lon);
-            map_.setCenter(loc.lat, loc.lon);
-            MAP_LOG("ctrl set initial center+home");
-        } else {
-            lv_coord_t px, py;
-            map_.project(loc.lat, loc.lon, px, py);
-            if (!map_.isVisible(px, py)) {
-                map_.setCenter(loc.lat, loc.lon);
+        getMapView()->onGPSUpdate(&gps_);
+    }
+
+    // 2. Keyboard handling
+    M5Cardputer.update();
+    auto& kb = M5Cardputer.Keyboard;
+    if (kb.isChange()) {
+        if (kb.isKeyPressed(KEY_TAB)) {
+            int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
+            _switchView((ViewID)next);
+        } else if (kb.isKeyPressed(ctrlbtns::KEY_ESC)) {
+            _switchView(ViewID::MAP);
+        } else { // Forward keys to active view
+            ViewBase* active = views_[(int)currentView_];
+            if (active) {
+                // Normal character keys
+                for (auto c : kb.keysState().word) {
+                    active->onKey((uint8_t)c);
+                }
+                // Special function keys mapped to custom codes
+                if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
             }
         }
-        MAP_LOG("ctrl draw <%5.5f,%5.5f>", loc.lat, loc.lon);
-        map_.setDot(loc.lat, loc.lon);
     }
+
+    // 3. Update all views
+    for (uint8_t i = 0; i < (uint8_t)ViewID::COUNT; i++) {
+        if (!views_[i]) continue;
+        views_[i]->update(i == (uint8_t)currentView_);
+    }
+}
+
+void Controller::_switchView(ViewID id) {
+    ViewBase* cur = views_[(int)currentView_];
+    ViewBase* next = views_[(int)id];
+    if (cur) cur->hide();
+    if (next) next->show();
+    currentView_ = id;
+}
+
+MapView* Controller::getMapView() {
+    return (MapView*) views_[(int) ViewID::MAP];
 }
