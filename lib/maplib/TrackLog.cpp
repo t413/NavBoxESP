@@ -177,33 +177,63 @@ void TrackLogViewer::update(MapRenderer* renderer, TrackLog* track) {
         return;
     }
 
-    // Find range of indices that are inside or near the viewport
-    int first = -1, last = -1;
+    // First pass: count how many points project onto (or near) the screen
+    // so we can compute a stride for uniform downsampling if needed.
+    int visibleCount = 0;
+    int firstVisible = -1, lastVisible = -1;
     for (int i = 0; i < (int)points.size(); ++i) {
         lv_coord_t px, py;
         renderer->project(points[i].lat, points[i].lon, px, py);
-        // Use a bit of padding to include segments that cross the screen
-        if (px > -50 && px < renderer->width_ + 50 && py > -50 && py < renderer->height_ + 50) {
-            if (first == -1) first = i;
-            last = i;
+        if (px > -50 && px < renderer->width_ + 50 &&
+            py > -50 && py < renderer->height_ + 50) {
+            if (firstVisible == -1) firstVisible = i;
+            lastVisible = i;
+            visibleCount++;
         }
     }
 
-    if (first == -1) {
+    if (visibleCount == 0) {
         lv_obj_add_flag(line, LV_OBJ_FLAG_HIDDEN);
         return;
     }
 
-    int rangeCount = last - first + 1;
+    // Stride: if more visible points than our budget, skip evenly.
+    // stride=1 means full resolution (every point), which happens when
+    // zoomed in and only a handful of points are on screen.
+    constexpr int MAX_PTS = 25;
+    int stride = (visibleCount + MAX_PTS - 1) / MAX_PTS; // ceiling div
+    if (stride < 1) stride = 1;
+
     pointCount = 0;
-    for (int i = 0; i < 25; i++) {
-        if (i >= rangeCount) break;
-        int idx = first + (i * (rangeCount - 1) / 24);
+    int skipped = 0;
+    for (int i = firstVisible; i <= lastVisible && pointCount < MAX_PTS; ++i) {
         lv_coord_t px, py;
-        renderer->project(points[idx].lat, points[idx].lon, px, py);
-        lvPoints[i].x = px;
-        lvPoints[i].y = py;
+        renderer->project(points[i].lat, points[i].lon, px, py);
+        bool onScreen = (px > -50 && px < renderer->width_ + 50 &&
+                         py > -50 && py < renderer->height_ + 50);
+        if (!onScreen) continue;
+        if (skipped < stride - 1) { ++skipped; continue; }
+        skipped = 0;
+        lvPoints[pointCount].x = px;
+        lvPoints[pointCount].y = py;
         pointCount++;
+    }
+
+    // Always include the last visible point so the line reaches the edge
+    if (pointCount > 0 && lastVisible != -1) {
+        lv_coord_t px, py;
+        renderer->project(points[lastVisible].lat, points[lastVisible].lon, px, py);
+        if (lvPoints[pointCount - 1].x != px || lvPoints[pointCount - 1].y != py) {
+            if (pointCount < MAX_PTS) {
+                lvPoints[pointCount].x = px;
+                lvPoints[pointCount].y = py;
+                pointCount++;
+            } else {
+                // Overwrite last slot with true endpoint
+                lvPoints[pointCount - 1].x = px;
+                lvPoints[pointCount - 1].y = py;
+            }
+        }
     }
 
     lv_line_set_points(line, lvPoints, pointCount);
