@@ -11,6 +11,7 @@ public:
     void hide() override;
     void update(bool inview) override;
     void onKey(uint8_t key) override;
+    bool handleBack() override;
 
     void setDir(std::string path);
     void refresh();

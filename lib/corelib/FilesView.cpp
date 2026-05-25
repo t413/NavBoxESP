@@ -58,11 +58,7 @@ void FilesView::onKey(uint8_t key) {
         const char* text = lv_label_get_text(lv_obj_get_child(focused, 0));
 
         if (strcmp(text, "..") == 0) {
-            if (currentDir_ != "/") {
-                size_t pos = currentDir_.find_last_of('/');
-                std::string parent = (pos == 0) ? "/" : currentDir_.substr(0, pos);
-                setDir(parent);
-            }
+            handleBack();
         } else if (text[strlen(text)-1] == '/') {
             std::string next = currentDir_;
             if (next.back() != '/') next += "/";
@@ -100,6 +96,15 @@ void FilesView::onKey(uint8_t key) {
             }
         }
     }
+}
+
+bool FilesView::handleBack() {
+    if (currentDir_ == "/")
+        return false;
+    size_t pos = currentDir_.find_last_of('/');
+    std::string parent = (pos == 0) ? "/" : currentDir_.substr(0, pos);
+    setDir(parent);
+    return true;
 }
 
 void FilesView::setDir(std::string path) {

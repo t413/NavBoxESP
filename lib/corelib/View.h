@@ -17,4 +17,5 @@ public:
     virtual void hide() = 0;
     virtual void update(bool inview) = 0;
     virtual void onKey(uint8_t key) = 0;
+    virtual bool handleBack() = 0;
 };

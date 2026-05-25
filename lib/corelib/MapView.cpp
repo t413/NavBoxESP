@@ -6,10 +6,10 @@
 // Local constants to replace Include/Config.h
 static constexpr int SIDEBAR_W = 60;
 static constexpr int SCREEN_H  = 135;
-static constexpr uint32_t COL_SIDEBAR_BG = 0x161B22;
-static constexpr uint32_t COL_TEXT       = 0xE6EDF3;
-static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E;
-static constexpr uint32_t COL_ACCENT     = 0x58A6FF;
+static constexpr uint32_t COL_SIDEBAR_BG = 0x161B22; //161B22
+static constexpr uint32_t COL_TEXT       = 0xE6EDF3; //E6EDF3
+static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E; //ccd4dc
+static constexpr uint32_t COL_ACCENT     = 0x58A6FF; //58A6FF
 
 void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     root_ = lv_obj_create(parent);
@@ -26,6 +26,7 @@ void MapView::create(lv_obj_t* parent, Controller* ctrl) {
 
     _createSidebar(root_);
     map_.setTracks(&(ctrl->recordTrack_), &(ctrl->viewTrack_));
+    _updateSidebar();
 }
 
 void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); }
@@ -39,7 +40,7 @@ void MapView::onGPSUpdate(GpsManager* gps) {
     if (!gps) return;
     if (!gps_) gps_ = gps;
     auto point = gps->toPoint();
-    _updateSidebar(point);
+    _updateSidebar(&point);
 
     map_.setDot(point.lat, point.lon);
 
@@ -86,6 +87,12 @@ void MapView::onKey(uint8_t key) {
     }
 }
 
+bool MapView::handleBack() {
+    if (!followMode_)
+        return ((followMode_ = true));
+    return false;
+}
+
 void MapView::_createSidebar(lv_obj_t* parent) {
     sidebar_ = lv_obj_create(parent);
     lv_obj_set_size(sidebar_, SIDEBAR_W, SCREEN_H);
@@ -97,11 +104,11 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(sidebar_, 0, 0);
 
     gpsDot_ = _makeDot(sidebar_, 6, 6);
-    satLabel_ = _makeLabel(sidebar_, 16, 2, &lv_font_montserrat_10);
-    lv_obj_set_style_text_color(satLabel_, lv_color_hex(COL_TEXT_DIM), 0);
+    satLabel_ = _makeLabel(sidebar_, 16, 2, &lv_font_montserrat_12);
+    lv_obj_set_style_text_color(satLabel_, lv_color_hex(COL_TEXT), 0);
 
-    battLabel_ = _makeLabel(sidebar_, 38, 2, &lv_font_montserrat_10);
-    lv_obj_set_style_text_color(battLabel_, lv_color_hex(COL_TEXT_DIM), 0);
+    battLabel_ = _makeLabel(sidebar_, 38, 2, &lv_font_montserrat_12);
+    lv_obj_set_style_text_color(battLabel_, lv_color_hex(COL_TEXT), 0);
 
     speedLabel_ = _makeLabel(sidebar_, 2, 18, &lv_font_montserrat_14);
     lv_obj_set_width(speedLabel_, SIDEBAR_W - 4);
@@ -128,7 +135,7 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     }
 }
 
-void MapView::_updateSidebar(const TrackPoint& point) {
+void MapView::_updateSidebar(const TrackPoint* point) {
     bool fixed = gps_ && gps_->hasFix();
     int hdop = gps_ && gps_->hdop();
     lv_color_t dotColor = fixed ? (hdop < 2.0f ? lv_color_hex(0x3FB950) : lv_color_hex(0xD29922)) : lv_color_hex(0xFF7B72);
@@ -144,16 +151,16 @@ void MapView::_updateSidebar(const TrackPoint& point) {
         lv_label_set_text(battLabel_, buf);
     }
 
-    snprintf(buf, 16, fixed ? "%.0f" : "--", gps_->speedMs() * 3.6f);
+    snprintf(buf, 16, fixed ? "%.0f" : "--", gps_? gps_->speedMs() * 3.6f : 0);
     lv_label_set_text(speedLabel_, buf);
 
-    snprintf(buf, 16, fixed ? "%dm" : "--", (int)point.alt);
+    snprintf(buf, 16, fixed ? "%dm" : "--", (int)(point? point->alt : 0));
     lv_label_set_text(altLabel_, buf);
 
     // Distance to marked home
     auto homepoint = map_.getHome();
-    if (fixed && homepoint) {
-        float d = homepoint.approxDistTo(point);
+    if (fixed && homepoint && point) {
+        float d = homepoint.approxDistTo(*point);
         if (d > 1000.0f) snprintf(buf, 16, "%.1fkm", d / 1000.0f);
         else snprintf(buf, 16, "%.0fm", d);
         lv_label_set_text(distLabel_, buf);
@@ -162,8 +169,9 @@ void MapView::_updateSidebar(const TrackPoint& point) {
     }
 
     // Sidebar indicator dots
-    for (int i = 0; i < (int)ViewID::COUNT; i++) {
-        lv_obj_set_style_bg_color(viewDots_[i], isActive_ ? lv_color_hex(COL_ACCENT) : lv_color_hex(COL_TEXT_DIM), 0);
+    for (uint8_t i = 0; i < (int)ViewID::COUNT; i++) {
+        bool act = (uint8_t)ctrl_->currentView_ == i;
+        lv_obj_set_style_bg_color(viewDots_[i], act ? lv_color_hex(COL_ACCENT) : lv_color_hex(COL_TEXT_DIM), 0);
     }
 
     // Recording indicator

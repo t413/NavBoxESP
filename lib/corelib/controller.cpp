@@ -21,6 +21,8 @@ void Controller::setup(lv_obj_t* parent) {
 }
 
 void Controller::iterate(uint32_t now) {
+    ViewBase* active = views_[(uint8_t)currentView_];
+
     // 1. Update GPS/State
     if (gps_.iterate(now)) {
         getMapView()->onGPSUpdate(&gps_);
@@ -37,17 +39,15 @@ void Controller::iterate(uint32_t now) {
             int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
             switchView((ViewID)next);
         } else if (kb.isKeyPressed(ctrlbtns::KEY_ESC)) {
-            switchView(ViewID::MAP);
-        } else { // Forward keys to active view
-            ViewBase* active = views_[(int)currentView_];
-            if (active) {
-                // Normal character keys
-                for (auto c : kb.keysState().word) {
-                    active->onKey((uint8_t)c);
-                }
-                // Special function keys mapped to custom codes
-                if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
+            if (active && !active->handleBack())
+                switchView(ViewID::MAP);
+        } else if (active) { // Forward keys to active view
+            // Normal character keys
+            for (auto c : kb.keysState().word) {
+                active->onKey((uint8_t)c);
             }
+            // Special function keys mapped to custom codes
+            if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
         }
     }
 

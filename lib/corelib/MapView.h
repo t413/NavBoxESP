@@ -14,6 +14,7 @@ public:
     void update(bool inview) override;
     void onGPSUpdate(GpsManager*);
     void onKey(uint8_t key) override;
+    bool handleBack() override;
 
 private:
     lv_obj_t* root_ = nullptr;
@@ -36,7 +37,7 @@ private:
     lv_obj_t* viewDots_[(int)ViewID::COUNT] = {};
 
     void _createSidebar(lv_obj_t* parent);
-    void _updateSidebar(const TrackPoint&);
+    void _updateSidebar(const TrackPoint* = nullptr);
 
     // UI Helpers
     static lv_obj_t* _makeLabel(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, const lv_font_t* font);
