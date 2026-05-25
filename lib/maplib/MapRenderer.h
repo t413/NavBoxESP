@@ -4,19 +4,12 @@
 #include <vector>
 #include <lvgl.h>
 #include <algorithm>
-#include <limits.h>
+#include "GeoPoint.h"
 #include "PixelBuffer.h"
 
 constexpr double DEFAULT_LAT = 37.8044;
 constexpr double DEFAULT_LON = -122.2712;
-constexpr double NO_LOCATION = (double)(INT_MIN);
 constexpr int ZOOM_UNCHANGED = -1;
-
-struct LatLon {
-    double lat = 0, lon = 0;
-    LatLon(double l = NO_LOCATION, double n = NO_LOCATION) : lat(l), lon(n) { }
-    operator bool() const { return lat != NO_LOCATION && lon != NO_LOCATION; }
-};
 
 class MapRenderer {
 public:
@@ -52,7 +45,8 @@ public:
     int   zoom() const { return zoom_; }
     double lat() const { return mapCenter_.lat; }
     double lon() const { return mapCenter_.lon; }
-    LatLon getCenter() const { return mapCenter_; }
+    GeoPoint getCenter() const { return mapCenter_; }
+    GeoPoint getHome() const { return home_; }
 
 private:
     lv_obj_t* obj_ = nullptr;
@@ -65,8 +59,8 @@ private:
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;
     lv_obj_t*      homeMarker_ = nullptr;
-    LatLon mapCenter_ = {DEFAULT_LAT, DEFAULT_LON};
-    LatLon dot_, home_;
+    GeoPoint mapCenter_ = {DEFAULT_LAT, DEFAULT_LON};
+    GeoPoint dot_, home_;
 
 public: //settings
     uint32_t colBg_ = 0x640d5c; // #640d5c
