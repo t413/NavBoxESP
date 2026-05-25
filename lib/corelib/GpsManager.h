@@ -13,8 +13,8 @@ public:
     double    lat()       const { return _currentPoint.lat; }
     double    lon()       const { return _currentPoint.lon; }
     float     alt()       const { return _currentPoint.alt; }
-    float     speedMs()   const { return _currentPoint.speed; }
-    float     hdop()      const { return _currentPoint.hdop; }
+    float     speedMs()   const { return speed_; }
+    float     hdop()      const { return hdoop_; }
     uint8_t   satellites() const { return _satellites; }
     uint32_t  epoch()     const { return _epoch; }
 
@@ -28,6 +28,7 @@ private:
     bool            _hasFix = false;
     uint32_t        _epoch  = 0;
     uint8_t         _satellites = 0;
+    float           hdoop_, speed_ = 0;
     TrackPoint      _currentPoint{};
 
     bool _probe(int rx, int tx, uint32_t baud, HardwareSerial& uart);

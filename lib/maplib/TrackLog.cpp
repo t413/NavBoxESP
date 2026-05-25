@@ -38,13 +38,13 @@ bool TrackLog::load(const char* path) {
         line[len] = '\0';
         char* p = strstr(line, "<trkpt");
         if (p) {
-            TrackPoint pt{};
+            GeoPoint pt{};
             char* latStr = strstr(p, "lat=\"");
             char* lonStr = strstr(p, "lon=\"");
             if (latStr && lonStr) {
                 pt.lat = atof(latStr + 5);
                 pt.lon = atof(lonStr + 5);
-                if (path_.empty() || path_.back().approxDistTo(pt) > minDist_ * 2.0) {
+                if (path_.empty() || path_.back().approxDistTo(pt) > minDist_) {
                     path_.push_back(pt);
                     if (path_.size() % 10 == 0)
                         MAP_LOG("track load at %d (heap %d)", path_.size(), freeHeap());

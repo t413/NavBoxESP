@@ -1,6 +1,6 @@
 #include "GeoPoint.h"
 
-GeoPoint::GeoPoint(double l, double n, double a) : lat(l), lon(n), alt(a) { }
+GeoPoint::GeoPoint(double l, double n) : lat(l), lon(n) { }
 GeoPoint::operator bool() const { return lat != NO_LOCATION && lon != NO_LOCATION; }
 
 constexpr double EARTH_RADIUS = 6371000; // in meters
@@ -21,7 +21,6 @@ double GeoPoint::approxDistTo(const GeoPoint& o) const {
     return sqrt(x*x + y*y) * M_PI * EARTH_RADIUS / 180.0;
 }
 
-double GeoPoint::verticalDistTo(const GeoPoint& o) const { return (o.alt - alt); }
 
 void GeoPoint::distHeadingPoint(double dist, double headingDeg, GeoPoint& out) const {
     double ad = dist / EARTH_RADIUS;
@@ -32,7 +31,6 @@ void GeoPoint::distHeadingPoint(double dist, double headingDeg, GeoPoint& out) c
     double outLonRad = lonRad + atan2(sin(headingRad) * sin(ad) * cos(latRad), cos(ad) - sin(latRad) * sin(outLatRad));
     out.lat = outLatRad / DEG_2_RAD;
     out.lon = outLonRad / DEG_2_RAD;
-    out.alt = alt;
 }
 
 TrackPoint TrackPoint::fromDistHeading(double dist, double headingDeg) const {
@@ -40,3 +38,5 @@ TrackPoint TrackPoint::fromDistHeading(double dist, double headingDeg) const {
     ret.distHeadingPoint(dist, headingDeg, ret);
     return ret;
 }
+
+double TrackPoint::verticalDistTo(const TrackPoint& o) const { return (o.alt - alt); }

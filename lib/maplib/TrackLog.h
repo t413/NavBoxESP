@@ -17,7 +17,7 @@ public:
     bool addPoint(const TrackPoint& p);
     void flush();
 
-    const std::vector<TrackPoint>& points() const { return path_; }
+    const std::vector<GeoPoint>& points() const { return path_; }
     bool isRecording() const { return isRecording_; }
     const char* getRecPath() const { return currentPath_; }
 
@@ -29,7 +29,7 @@ private:
     static void _epochToIso(uint32_t epoch, char* out, uint16_t outsize);
     bool _openFile(const char* path, const char* mode, fs::File& f);
 
-    std::vector<TrackPoint> path_; //whole sparse track
+    std::vector<GeoPoint> path_; //whole sparse track
     std::vector<TrackPoint> buffer_; //all raw points, written to GPX file
     char currentPath_[64] = "";
     bool isRecording_ = false;

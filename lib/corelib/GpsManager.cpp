@@ -46,8 +46,8 @@ bool GpsManager::iterate(uint32_t now) {
                 _currentPoint.lat = _gps->location.lat();
                 _currentPoint.lon = _gps->location.lng();
                 _currentPoint.alt = (float)_gps->altitude.meters();
-                _currentPoint.speed = (float)_gps->speed.mps();
-                _currentPoint.hdop = (float)(_gps->hdop.isValid() ? _gps->hdop.hdop() : 99.9f);
+                speed_ = (float)_gps->speed.mps();
+                hdoop_ = (float)(_gps->hdop.isValid() ? _gps->hdop.hdop() : 99.9f);
                 _currentPoint.epoch = _epoch;
 
                 newFix = true;

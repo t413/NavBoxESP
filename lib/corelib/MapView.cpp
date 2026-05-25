@@ -144,7 +144,7 @@ void MapView::_updateSidebar(const TrackPoint& point) {
         lv_label_set_text(battLabel_, buf);
     }
 
-    snprintf(buf, 16, fixed ? "%.0f" : "--", point.speed * 3.6f);
+    snprintf(buf, 16, fixed ? "%.0f" : "--", gps_->speedMs() * 3.6f);
     lv_label_set_text(speedLabel_, buf);
 
     snprintf(buf, 16, fixed ? "%dm" : "--", (int)point.alt);
