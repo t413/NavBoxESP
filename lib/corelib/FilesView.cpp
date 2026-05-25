@@ -72,28 +72,24 @@ void FilesView::onKey(uint8_t key) {
             }
         }
     } else if (key == ctrlbtns::KEY_ARROW_UP) {
-        if (focused_index_ > 0) {
-            lv_obj_t* prev_btn = lv_obj_get_child(container_, focused_index_);
-            if (prev_btn) lv_obj_clear_state(prev_btn, LV_STATE_PRESSED);
+        lv_obj_t* prev_btn = lv_obj_get_child(container_, focused_index_);
+        if (prev_btn) lv_obj_clear_state(prev_btn, LV_STATE_PRESSED);
 
-            focused_index_--;
-            lv_obj_t* btn = lv_obj_get_child(container_, focused_index_);
-            if (btn) {
-                lv_obj_add_state(btn, LV_STATE_PRESSED);
-                lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
-            }
+        focused_index_ = (focused_index_ > 0) ? focused_index_ - 1 : child_count - 1;
+        lv_obj_t* btn = lv_obj_get_child(container_, focused_index_);
+        if (btn) {
+            lv_obj_add_state(btn, LV_STATE_PRESSED);
+            lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
         }
     } else if (key == ctrlbtns::KEY_ARROW_DOWN) {
-        if (focused_index_ < child_count - 1) {
-            lv_obj_t* prev_btn = lv_obj_get_child(container_, focused_index_);
-            if (prev_btn) lv_obj_clear_state(prev_btn, LV_STATE_PRESSED);
+        lv_obj_t* prev_btn = lv_obj_get_child(container_, focused_index_);
+        if (prev_btn) lv_obj_clear_state(prev_btn, LV_STATE_PRESSED);
 
-            focused_index_++;
-            lv_obj_t* btn = lv_obj_get_child(container_, focused_index_);
-            if (btn) {
-                lv_obj_add_state(btn, LV_STATE_PRESSED);
-                lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
-            }
+        focused_index_ = (focused_index_ < child_count - 1) ? focused_index_ + 1 : 0;
+        lv_obj_t* btn = lv_obj_get_child(container_, focused_index_);
+        if (btn) {
+            lv_obj_add_state(btn, LV_STATE_PRESSED);
+            lv_obj_scroll_to_view(btn, LV_ANIM_OFF);
         }
     }
 }
