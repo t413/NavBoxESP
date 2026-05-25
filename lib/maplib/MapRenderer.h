@@ -75,6 +75,7 @@ public: //settings
     uint32_t colAccent_ = 0x24b9d7;
     uint32_t colHome_ = 0x2ECC71; // #2ECC71
     bool cropmode_ = false;
+    uint8_t dotsize_ = 14, homesize_ = 16;
 
 public: //utility methods, helpful to unit test
     static void _latLonToTileF(double lat, double lon, int z, double& tx, double& ty);

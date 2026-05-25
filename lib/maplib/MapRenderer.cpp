@@ -78,7 +78,7 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
 
     // Initialize standard LVGL objects for markers
     homeMarker_ = lv_obj_create(obj_);
-    lv_obj_set_size(homeMarker_, 16, 15);
+    lv_obj_set_size(homeMarker_, homesize_, homesize_);
     lv_obj_set_style_radius(homeMarker_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(homeMarker_, lv_color_hex(colHome_), 0);
     lv_obj_set_style_border_color(homeMarker_, lv_color_white(), 0);
@@ -89,7 +89,7 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
     lv_obj_center(label);
 
     posDot_ = lv_obj_create(obj_);
-    lv_obj_set_size(posDot_, 13, 13);
+    lv_obj_set_size(posDot_, dotsize_, dotsize_);
     lv_obj_set_style_radius(posDot_, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(posDot_, lv_color_hex(colAccent_), 0);
     lv_obj_set_style_border_color(posDot_, lv_color_white(), 0);
@@ -159,13 +159,13 @@ void MapRenderer::_updateMarkers() {
 
     if (dot_ && project(dot_.lat, dot_.lon, px, py)) {
         lv_obj_clear_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(posDot_, px - lv_obj_get_width(posDot_) / 2, py - lv_obj_get_height(posDot_) / 2);
+        lv_obj_set_pos(posDot_, px - dotsize_ / 2, py - dotsize_ / 2);
         // lv_obj_invalidate(posDot_);
     } else lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
 
     if (home_ && project(home_.lat, home_.lon, px, py)) {
         lv_obj_clear_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(homeMarker_, px - lv_obj_get_width(homeMarker_) / 2, py - lv_obj_get_height(homeMarker_) / 2);
+        lv_obj_set_pos(homeMarker_, px - homesize_ / 2, py - homesize_ / 2);
     } else lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
 }
 

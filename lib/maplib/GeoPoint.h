@@ -18,7 +18,7 @@ struct GeoPoint {
 
 
 struct TrackPoint : public GeoPoint {
-    TrackPoint(double l=0, double n=0, double a=0) : GeoPoint(l,n), alt(a) { }
+    TrackPoint(double l = NO_LOCATION, double n = NO_LOCATION, double a=0) : GeoPoint(l,n), alt(a) { }
     double verticalDistTo(const TrackPoint& o) const;
     // float    speed, hdop;
     float alt;
