@@ -14,7 +14,7 @@ void Controller::setup(lv_obj_t* parent) {
     views_[(int)ViewID::TEST] = new TestView();
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
-        if (views_[i]) views_[i]->create(parent);
+        if (views_[i]) views_[i]->create(parent, this);
     }
 
     _switchView(ViewID::MAP);
@@ -53,6 +53,10 @@ void Controller::iterate(uint32_t now) {
         if (!views_[i]) continue;
         views_[i]->update(i == (uint8_t)currentView_);
     }
+}
+
+uint8_t Controller::getBatt() const {
+    return M5.Power.getBatteryLevel();
 }
 
 void Controller::_switchView(ViewID id) {

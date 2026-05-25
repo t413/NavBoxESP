@@ -1,6 +1,8 @@
 #pragma once
 #include <lvgl.h>
 
+class Controller;
+
 enum class ViewID {
     MAP,
     TEST,
@@ -10,7 +12,7 @@ enum class ViewID {
 class ViewBase {
 public:
     virtual ~ViewBase() = default;
-    virtual void create(lv_obj_t* parent) = 0;
+    virtual void create(lv_obj_t* parent, Controller*) = 0;
     virtual void show() = 0;
     virtual void hide() = 0;
     virtual void update(bool inview) = 0;
@@ -20,7 +22,7 @@ public:
 // A minimal test view to demonstrate switching
 class TestView : public ViewBase {
 public:
-    void create(lv_obj_t* parent) override {
+    void create(lv_obj_t* parent, Controller*) override {
         root_ = lv_obj_create(parent);
         lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));
         lv_obj_set_style_bg_color(root_, lv_color_hex(0x000000), 0);

@@ -11,19 +11,20 @@ static constexpr uint32_t COL_TEXT       = 0xE6EDF3;
 static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E;
 static constexpr uint32_t COL_ACCENT     = 0x58A6FF;
 
-void MapView::create(lv_obj_t* parent) {
+void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     root_ = lv_obj_create(parent);
+    ctrl_ = ctrl;
     lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_pad_all(root_, 0, 0);
     lv_obj_set_style_border_width(root_, 0, 0);
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 
-    _createSidebar(root_);
-
-    // Initialize Map on the right side of the sidebar
+    // Initialize Map on the left side
     map_.begin(root_, 240 - SIDEBAR_W, 135, "/osm/%d/%d/%d.png");
-    map_.setXY(SIDEBAR_W, 0);
+    map_.setXY(0, 0);
     map_.setZoom(14);
+
+    _createSidebar(root_);
 }
 
 void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); }
@@ -74,14 +75,19 @@ void MapView::onKey(uint8_t key) {
             if (gps_ && gps_->hasFix())
                 map_.setCenter(gps_->lat(), gps_->lon());
             break;
+        case 'h':
+            if (gps_ && gps_->hasFix())
+                map_.setHome(gps_->lat(), gps_->lon());
+            break;
     }
 }
 
 void MapView::_createSidebar(lv_obj_t* parent) {
     sidebar_ = lv_obj_create(parent);
     lv_obj_set_size(sidebar_, SIDEBAR_W, SCREEN_H);
+    lv_obj_set_pos(sidebar_, 240 - SIDEBAR_W, 0);
     lv_obj_set_style_bg_color(sidebar_, lv_color_hex(COL_SIDEBAR_BG), 0);
-    lv_obj_set_style_border_side(sidebar_, LV_BORDER_SIDE_RIGHT, 0);
+    lv_obj_set_style_border_side(sidebar_, LV_BORDER_SIDE_LEFT, 0);
     lv_obj_set_style_border_color(sidebar_, lv_color_hex(0x2a3040), 0);
     lv_obj_set_style_border_width(sidebar_, 1, 0);
     lv_obj_set_style_pad_all(sidebar_, 0, 0);
@@ -89,6 +95,9 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     gpsDot_ = _makeDot(sidebar_, 6, 6);
     satLabel_ = _makeLabel(sidebar_, 16, 2, &lv_font_montserrat_10);
     lv_obj_set_style_text_color(satLabel_, lv_color_hex(COL_TEXT_DIM), 0);
+
+    battLabel_ = _makeLabel(sidebar_, 38, 2, &lv_font_montserrat_10);
+    lv_obj_set_style_text_color(battLabel_, lv_color_hex(COL_TEXT_DIM), 0);
 
     speedLabel_ = _makeLabel(sidebar_, 2, 18, &lv_font_montserrat_14);
     lv_obj_set_width(speedLabel_, SIDEBAR_W - 4);
@@ -125,11 +134,28 @@ void MapView::_updateSidebar(const TrackPoint& point) {
     snprintf(buf, 16, fixed ? "%d" : "--", gps_? gps_->satellites() : -1);
     lv_label_set_text(satLabel_, buf);
 
+    // Battery status
+    if (ctrl_) {
+        snprintf(buf, 16, "%d%%", ctrl_->getBatt());
+        lv_label_set_text(battLabel_, buf);
+    }
+
     snprintf(buf, 16, fixed ? "%.0f" : "--", point.speed * 3.6f);
     lv_label_set_text(speedLabel_, buf);
 
     snprintf(buf, 16, fixed ? "%dm" : "--", (int)point.alt);
     lv_label_set_text(altLabel_, buf);
+
+    // Distance to marked home
+    auto homepoint = map_.getHome();
+    if (fixed && homepoint) {
+        float d = homepoint.approxDistTo(point);
+        if (d > 1000.0f) snprintf(buf, 16, "%.1fkm", d / 1000.0f);
+        else snprintf(buf, 16, "%.0fm", d);
+        lv_label_set_text(distLabel_, buf);
+    } else {
+        lv_label_set_text(distLabel_, "H to set");
+    }
 
     // Sidebar indicator dots
     for (int i = 0; i < (int)ViewID::COUNT; i++) {

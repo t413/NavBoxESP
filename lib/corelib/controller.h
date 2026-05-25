@@ -22,6 +22,8 @@ public:
     void setup(lv_obj_t* parent);
     void iterate(uint32_t now);
 
+    uint8_t getBatt() const; /// battery percentage
+
 private:
     void _switchView(ViewID id);
     MapView* getMapView();

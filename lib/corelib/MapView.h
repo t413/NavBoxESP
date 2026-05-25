@@ -2,12 +2,13 @@
 #include "View.h"
 #include "MapRenderer.h"
 
+class Controller;
 class GpsManager;
 struct TrackPoint;
 
 class MapView : public ViewBase {
 public:
-    void create(lv_obj_t* parent) override;
+    void create(lv_obj_t*, Controller*) override;
     void show() override;
     void hide() override;
     void update(bool inview) override;
@@ -16,6 +17,7 @@ public:
 
 private:
     lv_obj_t* root_ = nullptr;
+    Controller* ctrl_;
     MapRenderer map_;
     GpsManager* gps_;
     bool followMode_ = true;
@@ -24,6 +26,7 @@ private:
     // Sidebar UI elements
     lv_obj_t* sidebar_ = nullptr;
     lv_obj_t* gpsDot_ = nullptr;
+    lv_obj_t* battLabel_ = nullptr;
     lv_obj_t* satLabel_ = nullptr;
     lv_obj_t* speedLabel_ = nullptr;
     lv_obj_t* altLabel_ = nullptr;
