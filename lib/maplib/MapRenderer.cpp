@@ -22,6 +22,26 @@ const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, con
     return nullptr;
 }
 
+void MapRenderer::TileCacheEntry::update(int px, int py, bool visible) {
+    if (visible) {
+        lv_coord_t adjustedX = px + buffer.getOffsetX();
+        lv_coord_t adjustedY = py + buffer.getOffsetY();
+        MAP_LOG("tile set pos [%d, %d] -> [%d, %d]", x,y, adjustedX, adjustedY);
+        lv_obj_set_pos(img_obj, adjustedX, adjustedY);
+        lv_obj_clear_flag(img_obj, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(img_obj, LV_OBJ_FLAG_HIDDEN);
+    }
+    onscreen = visible;
+}
+
+void MapRenderer::TileCacheEntry::clear() {
+    z = -1, x = -1, y = -1;
+    update(0,0,false);
+    buffer.clear();
+}
+
+
 MapRenderer::~MapRenderer() { }
 
 bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize) {
@@ -106,6 +126,11 @@ void MapRenderer::setHome(double lat, double lon) {
 void MapRenderer::setCenter(double lat, double lon, int zoom) {
     mapCenter_ = { lat, lon };
     if (zoom > 0 && zoom < 20) zoom_ = zoom;
+    if (cropmode_) { //invalidate cache first
+        MAP_LOG("cropmode enabled, clearing tile cache on recenter");
+        for (auto& t : cache_)
+            t.clear();
+    }
     _updateTiles();
 }
 void MapRenderer::setZoom(int z) {
@@ -131,10 +156,8 @@ void MapRenderer::_updateMarkers() {
 
 void MapRenderer::panPx(int dx, int dy) {
     double scale = (double)tileSize_ * pow(2.0, zoom_);
-    mapCenter_.lon += dx / scale * 360.0;
     double ty = _latToTileY(mapCenter_.lat, zoom_) + (double)dy / tileSize_;
-    mapCenter_.lat = _tileYToLat(ty, zoom_);
-    _updateTiles();
+    setCenter(_tileYToLat(ty, zoom_), mapCenter_.lon + dx / scale * 360.0);
 }
 
 void MapRenderer::_latLonToTileF(double lat, double lon, int z, double& tx, double& ty) {
@@ -196,7 +219,7 @@ void MapRenderer::_updateTiles() {
 
         int idx = _findTile(x, y, zoom_);
         if (idx != -1) { //found pre-loaded
-            _updateTileObj(cache_[idx], tx, ty, true);
+            cache_[idx].update(tx, ty, true);
             MAP_LOG("tile[%d] updated existing at p<%d,%d>", idx, tx, ty);
         } else { //add to missing
             missing[missingIdx++] = { x,y, tx,ty };
@@ -220,7 +243,7 @@ void MapRenderer::_updateTiles() {
 
             if (tile.load(m.x, m.y, zoom_, pathPattern_, crop)) {
                 lv_img_set_src(tile.img_obj, &tile.dsc_);
-                _updateTileObj(tile, m.tx, m.ty, true);
+                tile.update(m.tx, m.ty, true);
                 MAP_LOG("tile[%d] new tile at p<%d,%d>", newIdx, m.tx, m.ty);
             } else {
                 tile.z = -1;
@@ -230,22 +253,9 @@ void MapRenderer::_updateTiles() {
 
     for (int j = 0; j < TILECACHE_SIZE; j++)
         if (!cache_[j].onscreen)
-            _updateTileObj(cache_[j], 0, 0, false);
+            cache_[j].update(0, 0, false);
 
     _updateMarkers();
-}
-
-void MapRenderer::_updateTileObj(TileCacheEntry& tile, int x, int y, bool visible) {
-    if (visible) {
-        lv_coord_t adjustedX = x + tile.buffer.getOffsetX();
-        lv_coord_t adjustedY = y + tile.buffer.getOffsetY();
-        MAP_LOG("tile set pos [%d, %d] -> [%d, %d]", x,y, adjustedX, adjustedY);
-        lv_obj_set_pos(tile.img_obj, adjustedX, adjustedY);
-        lv_obj_clear_flag(tile.img_obj, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(tile.img_obj, LV_OBJ_FLAG_HIDDEN);
-    }
-    tile.onscreen = visible;
 }
 
 int freeHeap() {

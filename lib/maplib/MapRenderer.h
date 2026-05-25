@@ -28,6 +28,8 @@ public:
         int onscreen = 0; //set while iterating over tiles
         bool is(int ox, int oy, int oz) const { return ox == x && oy == y && oz == z; }
         const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, const Bounds &);
+        void update(int px, int py, bool visible);
+        void clear();
     };
     static constexpr uint8_t TILECACHE_SIZE = 4;
 
@@ -65,7 +67,6 @@ private:
     lv_obj_t*      homeMarker_ = nullptr;
     LatLon mapCenter_ = {DEFAULT_LAT, DEFAULT_LON};
     LatLon dot_, home_;
-    void _updateTileObj(TileCacheEntry& tile, int x, int y, bool visible);
 
 public: //settings
     uint32_t colBg_ = 0x640d5c; // #640d5c
