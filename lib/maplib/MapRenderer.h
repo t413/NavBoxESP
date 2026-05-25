@@ -7,6 +7,8 @@
 #include "GeoPoint.h"
 #include "PixelBuffer.h"
 
+class TrackLog;
+struct TrackLogViewer;
 constexpr double DEFAULT_LAT = 37.8044;
 constexpr double DEFAULT_LON = -122.2712;
 constexpr int ZOOM_UNCHANGED = -1;
@@ -41,6 +43,7 @@ public:
     void panPx(int dx, int dy);
     void setDot(double lat, double lon);
     void setHome(double lat, double lon);
+    void setTracks(TrackLog* record, TrackLog* view);
 
     int   zoom() const { return zoom_; }
     double lat() const { return mapCenter_.lat; }
@@ -49,6 +52,7 @@ public:
     GeoPoint getHome() const { return home_; }
 
 private:
+    friend class TrackLogViewer;
     lv_obj_t* obj_ = nullptr;
     int16_t x_ = 0, y_ = 0;
     uint16_t width_ = 0, height_ = 0;
@@ -59,6 +63,10 @@ private:
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;
     lv_obj_t*      homeMarker_ = nullptr;
+    TrackLog*      recordTrack_ = nullptr;
+    TrackLog*      viewTrack_ = nullptr;
+    TrackLogViewer* recordViewer_ = nullptr;
+    TrackLogViewer* viewViewer_ = nullptr;
     GeoPoint mapCenter_ = {DEFAULT_LAT, DEFAULT_LON};
     GeoPoint dot_, home_;
 
@@ -76,6 +84,7 @@ public: //utility methods, helpful to unit test
     int _findSlot();
     void _updateTiles();
     void _updateMarkers();
+    void _updateTracks();
 };
 
 int freeHeap();

@@ -79,6 +79,9 @@ void MapView::onKey(uint8_t key) {
             if (gps_ && gps_->hasFix())
                 map_.setHome(gps_->lat(), gps_->lon());
             break;
+        case 'r':
+            if (ctrl_) ctrl_->toggleRecording();
+            break;
     }
 }
 
@@ -161,6 +164,11 @@ void MapView::_updateSidebar(const TrackPoint& point) {
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         lv_obj_set_style_bg_color(viewDots_[i], isActive_ ? lv_color_hex(COL_ACCENT) : lv_color_hex(COL_TEXT_DIM), 0);
     }
+
+    // Recording indicator
+    bool rec = ctrl_ && ctrl_->isRecording();
+    lv_obj_set_style_bg_color(recDot_, rec ? lv_color_hex(0xFF3333) : lv_color_hex(0x333344), 0);
+    lv_label_set_text(recLabel_, rec ? "REC" : "");
 }
 
 lv_obj_t* MapView::_makeLabel(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, const lv_font_t* font) {

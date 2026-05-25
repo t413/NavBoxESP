@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <lvgl.h>
 #include "GpsManager.h"
+#include "TrackLog.h"
 #include "View.h"
 
 namespace ctrlbtns {
@@ -21,16 +22,20 @@ public:
 
     void setup(lv_obj_t* parent);
     void iterate(uint32_t now);
+    void switchView(ViewID id);
+
+    bool toggleRecording();
+    bool isRecording() const { return recordTrack_.isRecording(); }
 
     uint8_t getBatt() const; /// battery percentage
 
 private:
-    void _switchView(ViewID id);
     MapView* getMapView();
 
 public:
     GpsManager gps_;
-    TrackPoint lastGpsData_{};
+    TrackLog recordTrack_;
+    TrackLog viewTrack_;
     ViewID currentView_ = ViewID::MAP;
     ViewBase* views_[(int)ViewID::COUNT] = {};
 };

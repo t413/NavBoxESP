@@ -1,5 +1,6 @@
 #include "MapRenderer.h"
 #include "log.h"
+#include "TrackLog.h"
 
 static constexpr const double DEG_2_RAD = M_PI / 180;
 
@@ -41,8 +42,10 @@ void MapRenderer::TileCacheEntry::clear() {
     buffer.clear();
 }
 
-
-MapRenderer::~MapRenderer() { }
+MapRenderer::~MapRenderer() {
+    if (recordViewer_) delete recordViewer_;
+    if (viewViewer_) delete viewViewer_;
+}
 
 bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize) {
     width_ = w;
@@ -72,6 +75,9 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
         lv_obj_add_flag(cache_[i].img_obj, LV_OBJ_FLAG_HIDDEN);
     }
 
+    recordViewer_ = new TrackLogViewer(obj_, colAccent_);
+    viewViewer_ = new TrackLogViewer(obj_, 0xFF7B72);
+
     // Initialize standard LVGL objects for markers
     homeMarker_ = lv_obj_create(obj_);
     lv_obj_set_size(homeMarker_, 16, 15);
@@ -98,6 +104,13 @@ void MapRenderer::setXY(uint16_t x, uint16_t y) { lv_obj_set_pos(obj_, (x_ = x),
 
 void MapRenderer::invalidate() {
     _updateTiles();
+    _updateTracks();
+}
+
+void MapRenderer::setTracks(TrackLog* record, TrackLog* view) {
+    recordTrack_ = record;
+    viewTrack_ = view;
+    _updateTracks();
 }
 
 bool MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const {
@@ -117,6 +130,7 @@ bool MapRenderer::isVisible(lv_coord_t px, lv_coord_t py) const {
 void MapRenderer::setDot(double lat, double lon) {
     dot_ = {lat, lon};
     _updateMarkers();
+    _updateTracks();
 }
 void MapRenderer::setHome(double lat, double lon) {
     home_ = {lat, lon};
@@ -132,10 +146,17 @@ void MapRenderer::setCenter(double lat, double lon, int zoom) {
             t.clear();
     }
     _updateTiles();
+    _updateTracks();
 }
 void MapRenderer::setZoom(int z) {
     zoom_ = (z < 0) ? 0 : (z > 20 ? 20 : z);
     _updateTiles();
+    _updateTracks();
+}
+
+void MapRenderer::_updateTracks() {
+    if (recordViewer_) recordViewer_->update(this, recordTrack_);
+    if (viewViewer_) viewViewer_->update(this, viewTrack_);
 }
 
 void MapRenderer::_updateMarkers() {

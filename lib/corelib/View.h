@@ -6,6 +6,7 @@ class Controller;
 enum class ViewID {
     MAP,
     TEST,
+    FILES,
     COUNT
 };
 

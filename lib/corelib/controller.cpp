@@ -1,5 +1,6 @@
 #include "controller.h"
 #include "MapView.h"
+#include "FilesView.h"
 #include <log.h>
 #include <M5Cardputer.h>
 
@@ -12,18 +13,22 @@ void Controller::setup(lv_obj_t* parent) {
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
     views_[(int)ViewID::TEST] = new TestView();
+    views_[(int)ViewID::FILES] = (ViewBase*) new FilesView();
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->create(parent, this);
     }
 
-    _switchView(ViewID::MAP);
+    switchView(ViewID::MAP);
 }
 
 void Controller::iterate(uint32_t now) {
     // 1. Update GPS/State
     if (gps_.iterate(now)) {
         getMapView()->onGPSUpdate(&gps_);
+        if (recordTrack_.isRecording()) {
+            recordTrack_.addPoint(gps_.toPoint());
+        }
     }
 
     // 2. Keyboard handling
@@ -32,9 +37,9 @@ void Controller::iterate(uint32_t now) {
     if (kb.isChange()) {
         if (kb.isKeyPressed(KEY_TAB)) {
             int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
-            _switchView((ViewID)next);
+            switchView((ViewID)next);
         } else if (kb.isKeyPressed(ctrlbtns::KEY_ESC)) {
-            _switchView(ViewID::MAP);
+            switchView(ViewID::MAP);
         } else { // Forward keys to active view
             ViewBase* active = views_[(int)currentView_];
             if (active) {
@@ -59,7 +64,18 @@ uint8_t Controller::getBatt() const {
     return M5.Power.getBatteryLevel();
 }
 
-void Controller::_switchView(ViewID id) {
+bool Controller::toggleRecording() {
+    if (recordTrack_.isRecording()) {
+        recordTrack_.stopRecording();
+        return false;
+    } else {
+        char path[64];
+        snprintf(path, 64, "/tracks/%u.gpx", gps_.epoch());
+        return recordTrack_.beginRecording(path);
+    }
+}
+
+void Controller::switchView(ViewID id) {
     ViewBase* cur = views_[(int)currentView_];
     ViewBase* next = views_[(int)id];
     if (cur) cur->hide();
