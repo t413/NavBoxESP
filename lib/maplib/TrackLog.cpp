@@ -62,6 +62,21 @@ bool TrackLog::load(const char* path) {
     return true;
 }
 
+GeoPoint TrackLog::calcCenter() const {
+    if (path_.empty()) return {};
+    float minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+    for (const auto& p : path_) {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lon < minLon) minLon = p.lon;
+        if (p.lon > maxLon) maxLon = p.lon;
+    }
+    return {
+        (minLat + maxLat) * 0.5f,
+        (minLon + maxLon) * 0.5f
+    };
+}
+
 bool TrackLog::beginRecording(uint32_t epoch) {
     if (isRecording_) return false;
     if (pathbase_) {

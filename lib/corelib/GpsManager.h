@@ -20,7 +20,7 @@ public:
 
     bool begin(HardwareSerial&);
     bool iterate(uint32_t now);
-    TrackPoint toPoint() const { return _currentPoint; }
+    const TrackPoint& toPoint() const { return _currentPoint; }
 
 private:
     HardwareSerial* _serial = nullptr;

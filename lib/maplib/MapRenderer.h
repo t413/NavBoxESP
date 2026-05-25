@@ -38,7 +38,7 @@ public:
     bool project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
     bool isVisible(lv_coord_t px, lv_coord_t py) const;
 
-    void setCenter(double lat, double lon, int zoom = ZOOM_UNCHANGED); ///Sets the map's center view
+    void setCenter(const GeoPoint &, int zoom = ZOOM_UNCHANGED); ///Sets the map's center view
     void setZoom(int z);
     void panPx(int dx, int dy);
     void setDot(double lat, double lon);
@@ -48,8 +48,9 @@ public:
     int   zoom() const { return zoom_; }
     double lat() const { return mapCenter_.lat; }
     double lon() const { return mapCenter_.lon; }
-    GeoPoint getCenter() const { return mapCenter_; }
-    GeoPoint getHome() const { return home_; }
+    const GeoPoint& getCenter() const { return mapCenter_; }
+    const GeoPoint& getHome() const { return home_; }
+    const GeoPoint& getDot() const { return dot_; }
 
 private:
     friend class TrackLogViewer;

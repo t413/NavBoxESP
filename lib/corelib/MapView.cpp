@@ -17,6 +17,7 @@ void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_pad_all(root_, 0, 0);
     lv_obj_set_style_border_width(root_, 0, 0);
+    lv_obj_set_scrollbar_mode(root_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 
     // Initialize Map on the left side
@@ -55,7 +56,7 @@ void MapView::onGPSUpdate(GpsManager* gps) {
         }
 
         if (needsCenter) {
-            map_.setCenter(point.lat, point.lon);
+            map_.setCenter(point);
         }
     }
 }
@@ -75,7 +76,7 @@ void MapView::onKey(uint8_t key) {
         case 'f':
             followMode_ = true;
             if (gps_ && gps_->hasFix())
-                map_.setCenter(gps_->lat(), gps_->lon());
+                map_.setCenter(gps_->toPoint());
             break;
         case 'h':
             if (gps_ && gps_->hasFix())
@@ -88,9 +89,21 @@ void MapView::onKey(uint8_t key) {
 }
 
 bool MapView::handleBack() {
-    if (!followMode_)
-        return ((followMode_ = true));
+    if (!followMode_ && gps_ && gps_->hasFix()) {
+        setCenter(gps_->toPoint()); //toggle to follow mode
+        return true;
+    } else if (ctrl_ && ctrl_->viewTrack_.size()) {
+        setCenter(ctrl_->viewTrack_.calcCenter()); //toggle to track view
+        return true;
+    }
     return false;
+}
+
+void MapView::setCenter(const GeoPoint &p) {
+    bool isclose = p.approxDistTo(map_.getDot()) <= 1.0;
+    followMode_ = isclose; //just set follow mode if map is centering on dot
+    map_.setCenter(p);
+
 }
 
 void MapView::_createSidebar(lv_obj_t* parent) {
@@ -102,6 +115,7 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     lv_obj_set_style_border_color(sidebar_, lv_color_hex(0x2a3040), 0);
     lv_obj_set_style_border_width(sidebar_, 1, 0);
     lv_obj_set_style_pad_all(sidebar_, 0, 0);
+    lv_obj_set_scrollbar_mode(sidebar_, LV_SCROLLBAR_MODE_OFF);
 
     gpsDot_ = _makeDot(sidebar_, 6, 6);
     satLabel_ = _makeLabel(sidebar_, 16, 2, &lv_font_montserrat_12);

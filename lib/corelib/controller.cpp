@@ -73,6 +73,10 @@ bool Controller::toggleRecording() {
 
 bool Controller::loadTrack(const char* path) {
     if (viewTrack_.load(path)) {
+        auto m = getMapView();
+        auto center = viewTrack_.calcCenter();
+        if (m && center)
+            m->setCenter(center);
         switchView(ViewID::MAP);
         return true;
     }

@@ -11,6 +11,7 @@ class TrackLog {
 public:
     TrackLog(const char* pathbase=nullptr) : pathbase_(pathbase) { }
     void clear();
+    size_t size() { return path_.size(); }
     bool load(const char* path);
     bool beginRecording(uint32_t epoch);
     void stopRecording();
@@ -20,6 +21,7 @@ public:
     const std::vector<GeoPoint>& points() const { return path_; }
     bool isRecording() const { return isRecording_; }
     const char* getRecPath() const { return currentPath_; }
+    GeoPoint calcCenter() const;
 
 private:
     void _writeHeader(fs::File& f);

@@ -138,8 +138,8 @@ void MapRenderer::setHome(double lat, double lon) {
     _updateMarkers();
 }
 
-void MapRenderer::setCenter(double lat, double lon, int zoom) {
-    mapCenter_ = { lat, lon };
+void MapRenderer::setCenter(const GeoPoint& p, int zoom) {
+    mapCenter_ = p;
     if (zoom > 0 && zoom < 20) zoom_ = zoom;
     invalidate();
 }
@@ -172,7 +172,7 @@ void MapRenderer::_updateMarkers() {
 void MapRenderer::panPx(int dx, int dy) {
     double scale = (double)tileSize_ * pow(2.0, zoom_);
     double ty = _latToTileY(mapCenter_.lat, zoom_) + (double)dy / tileSize_;
-    setCenter(_tileYToLat(ty, zoom_), mapCenter_.lon + dx / scale * 360.0);
+    setCenter({_tileYToLat(ty, zoom_), mapCenter_.lon + dx / scale * 360.0});
 }
 
 void MapRenderer::_latLonToTileF(double lat, double lon, int z, double& tx, double& ty) {
