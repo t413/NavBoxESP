@@ -2,33 +2,44 @@
 #include <vector>
 #include <string>
 #include "GeoPoint.h"
-#include <Arduino.h>
-#include <SD.h>
+
+namespace fs {
+    class File;
+}
 
 class TrackLog {
 public:
+    TrackLog(const char* pathbase=nullptr) : pathbase_(pathbase) { }
     void clear();
     bool load(const char* path);
-    bool beginRecording(const char* path);
+    bool beginRecording(uint32_t epoch);
     void stopRecording();
     bool addPoint(const TrackPoint& p);
     void flush();
 
     const std::vector<TrackPoint>& points() const { return path_; }
     bool isRecording() const { return isRecording_; }
+    const char* getRecPath() const { return currentPath_; }
 
 private:
-    void _writeHeader(File& f);
-    void _appendPoint(File& f, const TrackPoint& p);
-    void _writeFooter(File& f);
-    uint32_t _findTailOffset(File& f);
-    void _epochToIso(uint32_t epoch, char* out);
+    void _writeHeader(fs::File& f);
+    void _writePoint(fs::File& f, const TrackPoint& p);
+    void _writeFooter(fs::File& f);
+    uint32_t _findTailOffset(fs::File& f);
+    static void _epochToIso(uint32_t epoch, char* out, uint16_t outsize);
+    bool _openFile(const char* path, const char* mode, fs::File& f);
 
-    std::vector<TrackPoint> path_;
-    std::vector<TrackPoint> buffer_;
-    std::string currentPath_;
+    std::vector<TrackPoint> path_; //whole sparse track
+    std::vector<TrackPoint> buffer_; //all raw points, written to GPX file
+    char currentPath_[64] = "";
     bool isRecording_ = false;
     uint32_t lastFlushTime_ = 0;
+    const char* pathbase_ = nullptr;
+public:
+    uint32_t recordedPoints_ = 0;
+    double minDist_ = 10.0; //m
+    uint16_t maxRawPoints_ = 10;
+    uint32_t maxRawUnFlush_ = 15000; //ms
 };
 
 class MapRenderer;
@@ -43,4 +54,3 @@ struct TrackLogViewer {
     TrackLogViewer(_lv_obj_t* parent, uint32_t linecolor);
     void update(MapRenderer*, TrackLog*);
 };
-

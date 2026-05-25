@@ -1,3 +1,4 @@
+// FilesView.h
 #pragma once
 #include "View.h"
 #include <string>
@@ -11,11 +12,16 @@ public:
     void update(bool inview) override;
     void onKey(uint8_t key) override;
 
+    void setDir(std::string path);
+    void refresh();
+
 private:
-    void _loadDir(const char* path);
+    static void _btn_event_cb(lv_event_t* e);
 
     lv_obj_t* root_ = nullptr;
-    lv_obj_t* list_ = nullptr;
+    lv_obj_t* pathstr_ = nullptr;
+    lv_obj_t* container_ = nullptr;  // Changed from list_
     Controller* ctrl_ = nullptr;
-    std::string currentDir_ = "/maps/";
+    std::string currentDir_ = "/maps";
+    int focused_index_ = 0;
 };

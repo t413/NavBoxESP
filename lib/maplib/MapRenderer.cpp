@@ -2,8 +2,6 @@
 #include "log.h"
 #include "TrackLog.h"
 
-static constexpr const double DEG_2_RAD = M_PI / 180;
-
 const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, const Bounds& bounds) {
     char path[128];
     snprintf(path, sizeof(path), fmt, oz, ox, oy);
@@ -103,8 +101,12 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
 void MapRenderer::setXY(uint16_t x, uint16_t y) { lv_obj_set_pos(obj_, (x_ = x), (y_ = y)); }
 
 void MapRenderer::invalidate() {
+    if (cropmode_) { //invalidate cache first
+        MAP_LOG("cropmode enabled, clearing tile cache on recenter");
+        for (auto& t : cache_)
+            t.clear();
+    }
     _updateTiles();
-    _updateTracks();
 }
 
 void MapRenderer::setTracks(TrackLog* record, TrackLog* view) {
@@ -130,7 +132,6 @@ bool MapRenderer::isVisible(lv_coord_t px, lv_coord_t py) const {
 void MapRenderer::setDot(double lat, double lon) {
     dot_ = {lat, lon};
     _updateMarkers();
-    _updateTracks();
 }
 void MapRenderer::setHome(double lat, double lon) {
     home_ = {lat, lon};
@@ -140,18 +141,11 @@ void MapRenderer::setHome(double lat, double lon) {
 void MapRenderer::setCenter(double lat, double lon, int zoom) {
     mapCenter_ = { lat, lon };
     if (zoom > 0 && zoom < 20) zoom_ = zoom;
-    if (cropmode_) { //invalidate cache first
-        MAP_LOG("cropmode enabled, clearing tile cache on recenter");
-        for (auto& t : cache_)
-            t.clear();
-    }
-    _updateTiles();
-    _updateTracks();
+    invalidate();
 }
 void MapRenderer::setZoom(int z) {
     zoom_ = (z < 0) ? 0 : (z > 20 ? 20 : z);
-    _updateTiles();
-    _updateTracks();
+    invalidate();
 }
 
 void MapRenderer::_updateTracks() {
@@ -277,6 +271,7 @@ void MapRenderer::_updateTiles() {
             cache_[j].update(0, 0, false);
 
     _updateMarkers();
+    _updateTracks();
 }
 
 int freeHeap() {

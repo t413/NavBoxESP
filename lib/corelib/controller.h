@@ -16,6 +16,9 @@ namespace ctrlbtns {
 }
 class MapView;
 
+#define BASEDIR_TILES "/maps/osm"
+#define BASEDIR_TRACKS_REC "/maps/tracks"
+
 class Controller {
 public:
     Controller();
@@ -26,6 +29,7 @@ public:
 
     bool toggleRecording();
     bool isRecording() const { return recordTrack_.isRecording(); }
+    bool loadTrack(const char* path);
 
     uint8_t getBatt() const; /// battery percentage
 

@@ -4,7 +4,7 @@
 #include <log.h>
 #include <M5Cardputer.h>
 
-Controller::Controller() {
+Controller::Controller() : recordTrack_(BASEDIR_TRACKS_REC) {
 }
 
 void Controller::setup(lv_obj_t* parent) {
@@ -12,13 +12,11 @@ void Controller::setup(lv_obj_t* parent) {
 
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
-    views_[(int)ViewID::TEST] = new TestView();
-    views_[(int)ViewID::FILES] = (ViewBase*) new FilesView();
+    views_[(int)ViewID::FILES] = new FilesView();
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->create(parent, this);
     }
-
     switchView(ViewID::MAP);
 }
 
@@ -69,10 +67,16 @@ bool Controller::toggleRecording() {
         recordTrack_.stopRecording();
         return false;
     } else {
-        char path[64];
-        snprintf(path, 64, "/tracks/%u.gpx", gps_.epoch());
-        return recordTrack_.beginRecording(path);
+        return recordTrack_.beginRecording(gps_.epoch());
     }
+}
+
+bool Controller::loadTrack(const char* path) {
+    if (viewTrack_.load(path)) {
+        switchView(ViewID::MAP);
+        return true;
+    }
+    return false;
 }
 
 void Controller::switchView(ViewID id) {

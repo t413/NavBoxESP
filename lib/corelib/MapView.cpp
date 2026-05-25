@@ -20,11 +20,12 @@ void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 
     // Initialize Map on the left side
-    map_.begin(root_, 240 - SIDEBAR_W, 135, "/osm/%d/%d/%d.png");
+    map_.begin(root_, 240 - SIDEBAR_W, 135, BASEDIR_TILES "/%d/%d/%d.png");
     map_.setXY(0, 0);
     map_.setZoom(14);
 
     _createSidebar(root_);
+    map_.setTracks(&(ctrl->recordTrack_), &(ctrl->viewTrack_));
 }
 
 void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); }

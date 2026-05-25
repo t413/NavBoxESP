@@ -1,4 +1,5 @@
 #include "PixelBuffer.h"
+#include "fileclass.h"
 #include "log.h"
 #include <PNGdec.h>
 #include <cstring>
@@ -42,25 +43,14 @@ pixel_t* PixelBuffer::getPixelPtrAbs(coord_t x, coord_t y) {
 
 static PNG _png;
 
-#ifdef ARDUINO
-#include <SD.h>
 static void * png_open(const char *fn, int32_t *s) {
-    File *f = new File(SD.open(fn));
+    fs::File *f = new fs::File(SD.open(fn));
     if (!f || !*f) { if (f) delete f; return nullptr; }
     *s = f->size(); return (void *)f;
 }
-static void png_close(void *h) { File *f = (File *)h; if (f) { f->close(); delete f; } }
-static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return static_cast<File *>(h->fHandle)->read(b, l); }
-static int32_t png_seek(PNGFILE *h, int32_t p) { return static_cast<File *>(h->fHandle)->seek(p); }
-#else
-static void * png_open(const char *fn, int32_t *s) {
-    FILE *f = fopen(fn, "rb"); if (!f) return nullptr;
-    fseek(f, 0, SEEK_END); *s = ftell(f); fseek(f, 0, SEEK_SET); return (void *)f;
-}
-static void png_close(void *h) { if (h) fclose((FILE *)h); }
-static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return fread(b, 1, l, (FILE *)h->fHandle); }
-static int32_t png_seek(PNGFILE *h, int32_t p) { return fseek((FILE *)h->fHandle, p, SEEK_SET) == 0; }
-#endif
+static void png_close(void *h) { fs::File *f = (fs::File *)h; if (f) { f->close(); delete f; } }
+static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return static_cast<fs::File *>(h->fHandle)->read(b, l); }
+static int32_t png_seek(PNGFILE *h, int32_t p) { return static_cast<fs::File *>(h->fHandle)->seek(p); }
 
 // Context for sparse PNG decoding
 struct SparsePngContext {
@@ -108,7 +98,7 @@ bool PixelBuffer::loadImg(const char* path, const Bounds &b) {
 
     if (_png.open(path, png_open, png_close, png_read, png_seek, png_draw_sparse) != PNG_SUCCESS) return false;
 
-    MAP_LOG("pxl::load %s opened (free: %u)", path, freeHeap());
+    // MAP_LOG("pxl::load %s opened (free: %u)", path, freeHeap());
 
     coord_t fw = _png.getWidth(), fh = _png.getHeight();
     coord_t aw = fw, ah = fh;
@@ -120,7 +110,7 @@ bool PixelBuffer::loadImg(const char* path, const Bounds &b) {
         ctx.b.bttm = ctx.b.bttm ? std::min(ctx.b.bttm, fh) : fh;
         aw = ctx.b.right - ctx.b.left;
         ah = ctx.b.bttm - ctx.b.top;
-        MAP_LOG("pxl::load %s [%dx%d] cropped (%d,%d,%d,%d)]", path, fw, fh, ctx.b.left, ctx.b.top, ctx.b.right, ctx.b.bttm);
+        // MAP_LOG("pxl::load %s [%dx%d] cropped (%d,%d,%d,%d)]", path, fw, fh, ctx.b.left, ctx.b.top, ctx.b.right, ctx.b.bttm);
     }
 
     if (!allocate(aw, ah, ctx.b.left, ctx.b.top)) {
@@ -138,6 +128,6 @@ bool PixelBuffer::loadImg(const char* path, const Bounds &b) {
         return false;
     }
 
-    MAP_LOG("pxl::load %s finished (free: %d) [%dx%d] offset: (%d,%d)", path, freeHeap(), width_, height_, offsetX_, offsetY_);
+    // MAP_LOG("pxl::load %s finished (free: %d) [%dx%d] offset: (%d,%d)", path, freeHeap(), width_, height_, offsetX_, offsetY_);
     return true;
 }

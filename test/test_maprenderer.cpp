@@ -73,3 +73,34 @@ TEST(MapRenderer, PanLogic) {
         MAP_LOG("mv z%d -> <%5.5f,%5.5f> -> [%d,%d]", z, map.lat(), map.lon(), px, py);
     }
 }
+
+TEST(MapRenderer, RealMapPositionRender) {
+    fixtures::LvglTestEnv env(300, 200);
+    MapRenderer map;
+    map.cropmode_ = true;
+    const char* TILES_PATH = "/Users/timo/Documents/t4ds/static/ext/tiles/%d/%d/%d.png";
+
+    auto ret = map.begin(env.base_, env.width_, env.height_, TILES_PATH);
+    EXPECT_TRUE(ret);
+
+    map.setCenter(37.87, -122.32, 16); //CCP at zoom 16
+    map.setDot(37.87037,-122.32285); //37.87255,-122.32037
+    map.setHome(37.87125,-122.31767);
+    env.draw(); //do a full lvgl render
+    env.save();
+
+    map.invalidate();
+    env.draw(); //do a full lvgl render
+    env.save("_change0");
+
+    MAP_LOG("SETTING DOT");
+    map.setDot(37.8705,-122.320); //move dot closer-in
+    MAP_LOG("SETTING DOT DONE");
+    map.invalidate();
+    env.draw(); //do a full lvgl render
+    env.save("_change1");
+
+    map.setCenter(37.8705,-122.320); //center map on dot
+    env.draw(); //do a full lvgl render
+    env.save("_change2");
+ }
