@@ -18,7 +18,7 @@ public:
     void setCenter(const GeoPoint &);
 
 private:
-    lv_obj_t* root_ = nullptr;
+    _lv_obj_t* root_ = nullptr;
     Controller* ctrl_ = nullptr;
     MapRenderer map_;
     GpsManager* gps_ = nullptr;
@@ -26,22 +26,22 @@ private:
     bool isActive_ = false;
 
     // Sidebar UI elements
-    lv_obj_t* sidebar_ = nullptr;
-    lv_obj_t* gpsDot_ = nullptr;
-    lv_obj_t* battLabel_ = nullptr;
-    lv_obj_t* satLabel_ = nullptr;
-    lv_obj_t* speedLabel_ = nullptr;
-    lv_obj_t* altLabel_ = nullptr;
-    lv_obj_t* distLabel_ = nullptr;
-    lv_obj_t* recDot_ = nullptr;
-    lv_obj_t* recLabel_ = nullptr;
-    lv_obj_t* viewDots_[(int)ViewID::COUNT] = {};
+    _lv_obj_t* sidebar_ = nullptr;
+    _lv_obj_t* gpsDot_ = nullptr;
+    _lv_obj_t* battLabel_ = nullptr;
+    _lv_obj_t* satLabel_ = nullptr;
+    _lv_obj_t* speedLabel_ = nullptr;
+    _lv_obj_t* altLabel_ = nullptr;
+    _lv_obj_t* distLabel_ = nullptr;
+    _lv_obj_t* recDot_ = nullptr;
+    _lv_obj_t* recLabel_ = nullptr;
+    _lv_obj_t* viewDots_[(int)ViewID::COUNT] = {};
 
     void _createSidebar(lv_obj_t* parent);
     void _updateSidebar(const TrackPoint* = nullptr);
 
     // UI Helpers
-    static lv_obj_t* _makeLabel(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, const lv_font_t* font);
-    static lv_obj_t* _makeDot(lv_obj_t* parent, lv_coord_t x, lv_coord_t y);
+    static _lv_obj_t* _makeLabel(lv_obj_t* parent, lv_coord_t x, lv_coord_t y, const lv_font_t* font);
+    static _lv_obj_t* _makeDot(lv_obj_t* parent, lv_coord_t x, lv_coord_t y);
     static void _makeDivider(lv_obj_t* parent, lv_coord_t y);
 };

@@ -5,7 +5,7 @@
 class ListView : public ViewBase {
 public:
     virtual ~ListView() = default;
-    void create(lv_obj_t* parent, Controller* ctrl) override;
+    void create(_lv_obj_t* parent, Controller* ctrl) override;
     void show() override;
     void hide() override;
     void iterate(bool active) override;
@@ -23,19 +23,30 @@ protected:
     void setRowValue(int idx, const char* val, uint32_t color = 0);
     void setRowBorder(int idx, uint32_t color);
 
-    lv_obj_t* root_ = nullptr;
-    lv_obj_t* header_ = nullptr;
-    lv_obj_t* headerLabel_ = nullptr;
-    lv_obj_t* listCont_ = nullptr;
+    _lv_obj_t* root_ = nullptr;
+    _lv_obj_t* header_ = nullptr;
+    _lv_obj_t* headerLabel_ = nullptr;
+    _lv_obj_t* listCont_ = nullptr;
+    _lv_obj_t* spinner_ = nullptr;
     Controller* ctrl_ = nullptr;
 
     struct RowUI {
-        lv_obj_t* container;
-        lv_obj_t* label;
-        lv_obj_t* value;
+        _lv_obj_t* container;
+        _lv_obj_t* label;
+        _lv_obj_t* value;
     };
     std::vector<RowUI> rows_;
     int focused_ = 0;
 
     void activateRow(int idx);
 };
+
+namespace listc {
+    static constexpr uint32_t COL_BG      = 0x0D1117;
+    static constexpr uint32_t COL_ROW     = 0x21262D;
+    static constexpr uint32_t COL_ROW_SEL = 0x1F3A5F;
+    static constexpr uint32_t COL_BORDER  = 0x30363D;
+    static constexpr uint32_t COL_ACCENT  = 0x58A6FF;
+    static constexpr uint32_t COL_TEXT    = 0xE6EDF3;
+    static constexpr uint32_t COL_DIM     = 0x8B949E;
+}

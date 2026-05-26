@@ -23,7 +23,7 @@ class Controller {
 public:
     Controller(const char* gitVersion);
 
-    void setup(lv_obj_t* parent);
+    void setup(_lv_obj_t* parent);
     void iterate(uint32_t now);
     void switchView(ViewID id);
 

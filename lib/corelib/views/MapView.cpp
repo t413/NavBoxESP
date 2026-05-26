@@ -2,6 +2,7 @@
 #include <log.h>
 #include "../controller.h"
 #include "../GpsManager.h"
+#include <lvgl.h>
 
 // Local constants to replace Include/Config.h
 static constexpr int SIDEBAR_W = 60;

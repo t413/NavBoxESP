@@ -1,7 +1,8 @@
 #pragma once
-#include <lvgl.h>
+#include <stdint.h>
 
 class Controller;
+struct _lv_obj_t;
 
 enum class ViewID {
     MAP,
@@ -12,7 +13,7 @@ enum class ViewID {
 class ViewBase {
 public:
     virtual ~ViewBase() = default;
-    virtual void create(lv_obj_t* parent, Controller*) = 0;
+    virtual void create(_lv_obj_t* parent, Controller*) = 0;
     virtual void show() = 0;
     virtual void hide() = 0;
     virtual void iterate(bool active) = 0;

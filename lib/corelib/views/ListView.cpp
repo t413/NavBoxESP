@@ -1,13 +1,8 @@
 #include "ListView.h"
 #include "../controller.h"
+#include <lvgl.h>
 
-static constexpr uint32_t COL_BG      = 0x0D1117;
-static constexpr uint32_t COL_ROW     = 0x21262D;
-static constexpr uint32_t COL_ROW_SEL = 0x1F3A5F;
-static constexpr uint32_t COL_BORDER  = 0x30363D;
-static constexpr uint32_t COL_ACCENT  = 0x58A6FF;
-static constexpr uint32_t COL_TEXT    = 0xE6EDF3;
-static constexpr uint32_t COL_DIM     = 0x8B949E;
+using namespace listc;
 
 void ListView::create(lv_obj_t* parent, Controller* ctrl) {
     ctrl_ = ctrl;

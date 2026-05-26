@@ -6,7 +6,7 @@
 
 class FilesView : public ListView {
 public:
-    void create(lv_obj_t* parent, Controller* ctrl) override;
+    void create(_lv_obj_t* parent, Controller* ctrl) override;
     void show() override;
     void iterate(bool inview) override;
     bool handleBack() override;
