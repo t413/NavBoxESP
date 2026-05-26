@@ -31,7 +31,8 @@ void FilesView::onRowAction(int idx) {
             std::string fullPath = currentDir_;
             if (fullPath.back() != '/') fullPath += "/";
             fullPath += text;
-            ctrl_->loadTrack(fullPath.c_str());
+            if (onFileSelected_)
+                onFileSelected_(fullPath.c_str());
             showSpinner(false);
         }
     }

@@ -5,6 +5,8 @@
 
 class Controller;
 struct TrackPoint;
+class FilesView;
+class TrackLog;
 
 /// Second main view. Shows app info, GPX status, and system settings.
 /// Subclasses ListView and uses the standard row interaction pattern.
@@ -20,6 +22,7 @@ private:
     void onRowAction(int idx) override;
     void onRowAdjust(int idx, bool right) override;
     void refreshRow(int idx) override;
+    void showFilePicker(TrackLog* dest);
 
     // Row indices — keep in sync with creation order
     enum RowID {

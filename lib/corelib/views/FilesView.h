@@ -2,7 +2,7 @@
 #pragma once
 #include "ListView.h"
 #include <string>
-#include <vector>
+#include <functional>
 
 class FilesView : public ListView {
 public:
@@ -12,10 +12,12 @@ public:
     bool handleBack() override;
 
     void setDir(std::string path);
+    void setCallback(std::function<void(const char*)> cb) { onFileSelected_ = cb; }
     void refresh();
 
 protected:
     void onRowAction(int idx) override;
+    std::function<void(const char*)> onFileSelected_;
 
 private:
     std::string currentDir_ = "/maps";

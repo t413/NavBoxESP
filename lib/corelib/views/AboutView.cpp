@@ -1,5 +1,6 @@
 #include "AboutView.h"
 #include "../controller.h"
+#include "FilesView.h"
 #include <log.h>
 #include <M5Unified.h>
 #include <lvgl.h>
@@ -18,10 +19,9 @@ void AboutView::create(lv_obj_t* parent, Controller* ctrl) {
     ListView::create(parent, ctrl);
 
     // adjust header section
-    lv_obj_set_height(header_, LV_SIZE_CONTENT);
     lv_obj_set_flex_flow(header_, LV_FLEX_FLOW_COLUMN);
-
-    setHeader("NavBox by t413");
+    setHeader("NavBox by t413 - t413.com");
+    lv_obj_set_style_text_align(headerLabel_, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t* versLabel = lv_label_create(header_);
     lv_label_set_text(versLabel, ctrl_->gitVersion());
@@ -86,22 +86,36 @@ void AboutView::refreshRow(int idx) {
     }
 }
 
+void AboutView::showFilePicker(TrackLog* dest) {
+    auto picker = new FilesView();
+    picker->create(ctrl_->getOverlayRoot(), ctrl_);
+    lv_obj_set_size(picker->root_, LV_PCT(80), LV_PCT(95));
+    lv_obj_center(picker->root_);
+    lv_obj_set_style_bg_color(picker->root_, lv_color_hex(0x082b0e), 0); // #082b0e
+    picker->setDir(BASEDIR_TRACKS_REC);
+    picker->show();
+    picker->setCallback([this,dest](const char* path) {
+        if (dest) {
+            ctrl_->loadTrack(path, dest);
+            ctrl_->setOverlay(nullptr);
+        }
+    });
+    ctrl_->setOverlay(picker);
+}
+
 void AboutView::onRowAction(int idx) {
     switch (idx) {
-        case ROW_VIEW_TRACK:
-            if (ctrl_->viewTrack_.size() > 0) {
-                ctrl_->viewTrack_.clear();
-            }
+        case ROW_VIEW_TRACK: {
+            if (ctrl_->viewTrack_.size() > 0) ctrl_->viewTrack_.clear();
+            else showFilePicker(&ctrl_->viewTrack_);
             break;
-
-        case ROW_REC_TRACK:
-            if (ctrl_->isRecording()) {
-                ctrl_->toggleRecording();
-            } else if (ctrl_->recordTrack_.size() > 0) {
-                ctrl_->recordTrack_.clear();
-            }
+        }
+        case ROW_REC_TRACK: {
+            if (ctrl_->isRecording()) ctrl_->toggleRecording();
+            else if (ctrl_->recordTrack_.size() > 0) ctrl_->recordTrack_.clear();
+            else showFilePicker(&ctrl_->recordTrack_);
             break;
-
+        }
         case ROW_BRIGHTNESS:
             ctrl_->screenBrightness_ = std::min(255U, ctrl_->screenBrightness_ + BRIGHT_STEP);
             M5.Display.setBrightness(ctrl_->screenBrightness_);

@@ -10,7 +10,7 @@ public:
     void hide() override;
     void iterate(bool active) override;
     void onKey(uint8_t key) override;
-    bool handleBack() override { return false; }
+    virtual bool handleBack() override { return false; }
 
 protected:
     virtual void onRowAction(int idx) = 0;
@@ -30,6 +30,7 @@ protected:
     _lv_obj_t* listCont_ = nullptr;
     _lv_obj_t* spinner_ = nullptr;
     Controller* ctrl_ = nullptr;
+    friend class AboutView;
 
     struct RowUI {
         _lv_obj_t* container;

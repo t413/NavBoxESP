@@ -31,6 +31,7 @@ bool TrackLog::load(const char* path) {
     fs::File f = SD.open(path);
     if (!f) return false;
     MAP_LOG("TrackLog::load %s", path);
+    strncpy(currentPath_, path, sizeof(currentPath_)); //save opened path
     clear();
     char line[128];
     while (f.available()) {

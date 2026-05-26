@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "views/AboutView.h"
 #include "views/MapView.h"
+#include <lvgl.h>
 #include <log.h>
 #include <M5Cardputer.h>
 
@@ -8,6 +9,15 @@ Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS
 
 void Controller::setup(lv_obj_t* parent) {
     parent_ = parent;
+    // Full-screen overlay container for modals (sits above views, below nothing)
+    overlayRoot_ = lv_obj_create(parent);
+    lv_obj_set_size(overlayRoot_, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_opa(overlayRoot_, 0, 0);
+    lv_obj_set_style_border_width(overlayRoot_, 0, 0);
+    lv_obj_set_style_pad_all(overlayRoot_, 0, 0);
+    lv_obj_set_scrollbar_mode(overlayRoot_, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN); // hidden when no modals
+
     gps_.begin(Serial1);
 
     // Initialize views
@@ -20,6 +30,18 @@ void Controller::setup(lv_obj_t* parent) {
     switchView(ViewID::MAP);
     lastActivityMs_ = millis();
     M5.Display.setBrightness(screenBrightness_);
+}
+
+void Controller::setOverlay(ViewBase* overlay) {
+    if (overlay) {
+        lv_obj_clear_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(overlayRoot_); // Bring overlay to front so it renders above views
+    } else {
+        lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN);
+        overlay_->hide();
+        delete overlay_;
+    }
+    overlay_ = overlay;
 }
 
 void Controller::iterate(uint32_t now) {
@@ -45,12 +67,15 @@ void Controller::_processKeys(uint32_t now) {
     auto& kb = M5Cardputer.Keyboard;
     if (kb.isChange()) {
         ViewBase* active = views_[(uint8_t)currentView_];
+        if (overlay_) active = overlay_;
         if (kb.isKeyPressed(KEY_TAB)) {
             int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
             switchView((ViewID)next);
         } else if (kb.isKeyPressed(ctrlbtns::KEY_ESC)) {
-            if (active && !active->handleBack())
-                switchView(ViewID::MAP);
+            if (active && !active->handleBack()) {
+                if (overlay_) setOverlay(nullptr);
+                else switchView(ViewID::MAP);
+            }
         } else if (active) { // Forward keys to active view
             // Normal character keys
             for (auto c : kb.keysState().word) {
@@ -95,10 +120,11 @@ bool Controller::toggleRecording() {
     }
 }
 
-bool Controller::loadTrack(const char* path) {
-    if (viewTrack_.load(path)) {
+bool Controller::loadTrack(const char* path, TrackLog* to) {
+    if (!to) to = &viewTrack_;
+    if (to->load(path)) {
         auto m = getMapView();
-        auto center = viewTrack_.calcCenter();
+        auto center = to->calcCenter();
         if (m && center)
             m->setCenter(center);
         switchView(ViewID::MAP);

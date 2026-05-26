@@ -16,7 +16,7 @@ void ListView::create(lv_obj_t* parent, Controller* ctrl) {
     lv_obj_set_flex_flow(root_, LV_FLEX_FLOW_COLUMN);
 
     header_ = lv_obj_create(root_);
-    lv_obj_set_size(header_, LV_PCT(100), 20);
+    lv_obj_set_size(header_, LV_PCT(100), LV_SIZE_CONTENT);
     lv_obj_set_style_bg_color(header_, lv_color_hex(COL_BG), 0);
     lv_obj_set_style_border_side(header_, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(header_, lv_color_hex(COL_BORDER), 0);

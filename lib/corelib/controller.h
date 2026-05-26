@@ -26,13 +26,14 @@ public:
     void setup(_lv_obj_t* parent);
     void iterate(uint32_t now);
     void switchView(ViewID id);
+    _lv_obj_t* getOverlayRoot() { return overlayRoot_; }
+    void setOverlay(ViewBase*);
 
     bool toggleRecording();
     bool isRecording() const { return recordTrack_.isRecording(); }
-    bool loadTrack(const char* path);
+    bool loadTrack(const char* path, TrackLog*);
 
     uint8_t getBatt() const; /// battery percentage
-
     const char* gitVersion() const { return version_; }
 
 private:
@@ -40,6 +41,8 @@ private:
     void _processKeys(uint32_t now);
     void _updateDimming(uint32_t now);
     _lv_obj_t* parent_  = nullptr;   // screen root
+    _lv_obj_t* overlayRoot_ = nullptr; //for modal overlays
+    ViewBase* overlay_ = nullptr;
     const char* version_ = "v?";
     uint32_t lastActivityMs_ = 0;
     bool dimmed_ = false, sleeping_ = false;
