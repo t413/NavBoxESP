@@ -27,7 +27,6 @@ void setup() {
     M5.begin(cfg);
     M5Cardputer.begin();
     M5.Display.setRotation(1);  // landscape
-    M5.Display.setBrightness(180);
 
     Serial.begin(115200);
     MAP_LOG("Starting up (free: %u)", ESP.getFreeHeap());

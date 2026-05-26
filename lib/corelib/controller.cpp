@@ -17,6 +17,8 @@ void Controller::setup(lv_obj_t* parent) {
         if (views_[i]) views_[i]->create(parent, this);
     }
     switchView(ViewID::MAP);
+    lastActivityMs_ = millis();
+    M5.Display.setBrightness(screenBrightness_);
 }
 
 void Controller::iterate(uint32_t now) {
@@ -48,12 +50,33 @@ void Controller::iterate(uint32_t now) {
             // Special function keys mapped to custom codes
             if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
         }
+        lastActivityMs_ = now;
+        if (dimmed_ || sleeping_) {
+            dimmed_ = sleeping_ = false;
+            M5.Display.wakeup();
+            M5.Display.setBrightness(screenBrightness_);
+        }
     }
+    _updateDimming(now);
 
     // 3. Update all views
     for (uint8_t i = 0; i < (uint8_t)ViewID::COUNT; i++) {
         if (!views_[i]) continue;
         views_[i]->update(i == (uint8_t)currentView_);
+    }
+}
+
+void Controller::_updateDimming(uint32_t now) {
+    if (screenDimSec_ == 0) return; // "never" mode
+    uint32_t idle = (now - lastActivityMs_) / 1000;
+    if (!dimmed_ && idle >= (screenDimSec_ - 5)) {
+        dimmed_ = true;
+        M5.Display.setBrightness(10); // very dim
+    }
+    if (idle >= screenDimSec_ && !sleeping_) {
+        MAP_LOG("Display sleep after %us idle", idle);
+        M5.Display.sleep();
+        sleeping_ = true;
     }
 }
 

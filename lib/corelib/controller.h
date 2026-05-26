@@ -37,7 +37,10 @@ public:
 
 private:
     MapView* getMapView();
+    void _updateDimming(uint32_t now);
     const char* version_ = "v?";
+    uint32_t lastActivityMs_ = 0;
+    bool dimmed_ = false, sleeping_ = false;
 
 public:
     GpsManager gps_;
@@ -45,4 +48,5 @@ public:
     TrackLog viewTrack_;
     ViewID currentView_ = ViewID::MAP;
     ViewBase* views_[(int)ViewID::COUNT] = {};
+    uint32_t screenBrightness_ = 160, screenDimSec_ = 60;
 };
