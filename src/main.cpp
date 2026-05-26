@@ -5,6 +5,7 @@
 #include <lvgl.h>
 #include <log.h>
 #include "controller.h"
+#include "version.h"
 
 // ── LVGL display + touch buffers ─────────────────────────────────────────────
 static lv_disp_draw_buf_t _dispBuf;
@@ -19,7 +20,7 @@ static constexpr int SD_SPI_MISO_PIN = 39;
 static constexpr int SD_SPI_MOSI_PIN = 14;
 static constexpr int SD_SPI_CS_PIN   = 12;
 
-static Controller ctrl;
+static Controller ctrl(GIT_VERSION);
 
 void setup() {
     auto cfg = M5.config();
@@ -29,10 +30,7 @@ void setup() {
     M5.Display.setBrightness(180);
 
     Serial.begin(115200);
-    for (uint8_t i = 0; i < 1; i++) {
-        delay(100);
-        MAP_LOG("Starting up (%u) (free: %u)", i, ESP.getFreeHeap());
-    }
+    MAP_LOG("Starting up (free: %u)", ESP.getFreeHeap());
 
     SPI.begin(SD_SPI_SCK_PIN, SD_SPI_MISO_PIN, SD_SPI_MOSI_PIN, SD_SPI_CS_PIN);
     if (SD.begin(SD_SPI_CS_PIN, SPI, 25000000)) {
@@ -50,7 +48,7 @@ void setup() {
     ctrl.setup(screen);
 
     lv_task_handler();
-    MAP_LOG("Setup complete (free %d)", ESP.getFreeHeap());
+    MAP_LOG("Setup complete (free %d) version %s", ESP.getFreeHeap(), GIT_VERSION);
 }
 
 void loop() {

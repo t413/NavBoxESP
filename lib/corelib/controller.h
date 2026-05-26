@@ -21,7 +21,7 @@ class MapView;
 
 class Controller {
 public:
-    Controller();
+    Controller(const char* gitVersion);
 
     void setup(lv_obj_t* parent);
     void iterate(uint32_t now);
@@ -33,8 +33,11 @@ public:
 
     uint8_t getBatt() const; /// battery percentage
 
+    const char* gitVersion() const { return version_; }
+
 private:
     MapView* getMapView();
+    const char* version_ = "v?";
 
 public:
     GpsManager gps_;

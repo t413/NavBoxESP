@@ -4,8 +4,7 @@
 #include <log.h>
 #include <M5Cardputer.h>
 
-Controller::Controller() : recordTrack_(BASEDIR_TRACKS_REC) {
-}
+Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}
 
 void Controller::setup(lv_obj_t* parent) {
     gps_.begin(Serial1);
