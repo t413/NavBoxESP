@@ -1,6 +1,6 @@
 #include "controller.h"
-#include "MapView.h"
 #include "FilesView.h"
+#include "views/MapView.h"
 #include <log.h>
 #include <M5Cardputer.h>
 

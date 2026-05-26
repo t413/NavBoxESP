@@ -1,6 +1,6 @@
 #pragma once
-#include "View.h"
-#include "MapRenderer.h"
+#include "../View.h"
+#include <MapRenderer.h>
 
 class Controller;
 class GpsManager;
@@ -19,9 +19,9 @@ public:
 
 private:
     lv_obj_t* root_ = nullptr;
-    Controller* ctrl_;
+    Controller* ctrl_ = nullptr;
     MapRenderer map_;
-    GpsManager* gps_;
+    GpsManager* gps_ = nullptr;
     bool followMode_ = true;
     bool isActive_ = false;
 

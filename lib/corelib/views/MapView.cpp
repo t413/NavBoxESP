@@ -1,7 +1,7 @@
 #include "MapView.h"
 #include <log.h>
-#include "controller.h"
-#include "GpsManager.h"
+#include "../controller.h"
+#include "../GpsManager.h"
 
 // Local constants to replace Include/Config.h
 static constexpr int SIDEBAR_W = 60;
