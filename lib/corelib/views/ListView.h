@@ -19,7 +19,7 @@ protected:
     virtual void refreshAll() { for (int i = 0; i < (int)rows_.size(); i++) refreshRow(i); }
 
     void setHeader(const char*);
-    int addRow(const char* name, const char* value, uint32_t valColor);
+    int addRow(const char* name, const char* value, uint32_t valColor=0);
     void setRowValue(int idx, const char* val, uint32_t color = 0);
     void setRowBorder(int idx, uint32_t color);
     void showSpinner(bool show);

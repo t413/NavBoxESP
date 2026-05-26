@@ -5,8 +5,8 @@ class Controller;
 struct _lv_obj_t;
 
 enum class ViewID {
-    MAP,
-    FILES,
+    MAP   = 0,
+    ABOUT = 1,
     COUNT
 };
 

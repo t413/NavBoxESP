@@ -1,6 +1,6 @@
 #pragma once
 
-// ── Debug Logging ────────────────────────────────────────────────────────────
+// Debug Logging
 #ifdef ARDUINO
     #include <Arduino.h>
     #define MAP_LOG(fmt, ...) Serial.printf("[MAP] " fmt "\n", ##__VA_ARGS__)

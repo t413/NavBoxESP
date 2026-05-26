@@ -1,5 +1,5 @@
 #include "controller.h"
-#include "FilesView.h"
+#include "views/AboutView.h"
 #include "views/MapView.h"
 #include <log.h>
 #include <M5Cardputer.h>
@@ -12,7 +12,7 @@ void Controller::setup(lv_obj_t* parent) {
 
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
-    views_[(int)ViewID::FILES] = new FilesView();
+    views_[(int)ViewID::ABOUT] = new AboutView();
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->create(parent, this);

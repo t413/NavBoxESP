@@ -7,7 +7,7 @@
 #include "controller.h"
 #include "version.h"
 
-// ── LVGL display + touch buffers ─────────────────────────────────────────────
+// LVGL display + touch buffers
 static lv_disp_draw_buf_t _dispBuf;
 static lv_color_t* _buf1; //allocated below
 static lv_color_t* _buf2;
