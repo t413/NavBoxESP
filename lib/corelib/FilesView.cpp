@@ -39,7 +39,7 @@ void FilesView::hide() {
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 }
 
-void FilesView::update(bool inview) {}
+void FilesView::iterate(bool inview) { }
 
 void FilesView::onKey(uint8_t key) {
     lv_obj_t* first_btn = lv_obj_get_child(container_, 0);

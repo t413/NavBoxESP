@@ -7,6 +7,7 @@
 Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}
 
 void Controller::setup(lv_obj_t* parent) {
+    parent_ = parent;
     gps_.begin(Serial1);
 
     // Initialize views
@@ -22,8 +23,6 @@ void Controller::setup(lv_obj_t* parent) {
 }
 
 void Controller::iterate(uint32_t now) {
-    ViewBase* active = views_[(uint8_t)currentView_];
-
     // 1. Update GPS/State
     if (gps_.iterate(now)) {
         getMapView()->onGPSUpdate(&gps_);
@@ -31,11 +30,21 @@ void Controller::iterate(uint32_t now) {
             recordTrack_.addPoint(gps_.toPoint());
         }
     }
+    _processKeys(now);
+    _updateDimming(now);
 
-    // 2. Keyboard handling
+    // 3. Update all views
+    for (uint8_t i = 0; i < (uint8_t)ViewID::COUNT; i++) {
+        if (!views_[i]) continue;
+        views_[i]->iterate(i == (uint8_t)currentView_);
+    }
+}
+
+void Controller::_processKeys(uint32_t now) {
     M5Cardputer.update();
     auto& kb = M5Cardputer.Keyboard;
     if (kb.isChange()) {
+        ViewBase* active = views_[(uint8_t)currentView_];
         if (kb.isKeyPressed(KEY_TAB)) {
             int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
             switchView((ViewID)next);
@@ -56,13 +65,6 @@ void Controller::iterate(uint32_t now) {
             M5.Display.wakeup();
             M5.Display.setBrightness(screenBrightness_);
         }
-    }
-    _updateDimming(now);
-
-    // 3. Update all views
-    for (uint8_t i = 0; i < (uint8_t)ViewID::COUNT; i++) {
-        if (!views_[i]) continue;
-        views_[i]->update(i == (uint8_t)currentView_);
     }
 }
 

@@ -11,7 +11,7 @@ public:
     void create(lv_obj_t*, Controller*) override;
     void show() override;
     void hide() override;
-    void update(bool inview) override;
+    void iterate(bool inview) override;
     void onGPSUpdate(GpsManager*);
     void onKey(uint8_t key) override;
     bool handleBack() override;

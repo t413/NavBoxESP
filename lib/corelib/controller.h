@@ -1,6 +1,5 @@
 #pragma once
-#include <Arduino.h>
-#include <lvgl.h>
+#include <stdint.h>
 #include "GpsManager.h"
 #include "TrackLog.h"
 #include "View.h"
@@ -15,6 +14,7 @@ namespace ctrlbtns {
     static constexpr char KEY_ARROW_RIGHT = '/';
 }
 class MapView;
+struct _lv_obj_t;
 
 #define BASEDIR_TILES "/maps/osm"
 #define BASEDIR_TRACKS_REC "/maps/tracks"
@@ -37,7 +37,9 @@ public:
 
 private:
     MapView* getMapView();
+    void _processKeys(uint32_t now);
     void _updateDimming(uint32_t now);
+    _lv_obj_t* parent_  = nullptr;   // screen root
     const char* version_ = "v?";
     uint32_t lastActivityMs_ = 0;
     bool dimmed_ = false, sleeping_ = false;
