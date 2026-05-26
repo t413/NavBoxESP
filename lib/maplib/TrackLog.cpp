@@ -46,8 +46,10 @@ bool TrackLog::load(const char* path) {
                 pt.lon = atof(lonStr + 5);
                 if (path_.empty() || path_.back().approxDistTo(pt) > minDist_) {
                     path_.push_back(pt);
-                    if (path_.size() % 10 == 0)
+                    if (path_.size() % 10 == 0) {
                         MAP_LOG("track load at %d (heap %d)", path_.size(), freeHeap());
+                        lv_timer_handler(); //periodically run the UI
+                    }
                     #ifdef ARDUINO
                     if (freeHeap() < 3000) {
                         MAP_LOG("track load OOM aborting");
@@ -151,7 +153,7 @@ void TrackLog::flush() {
 }
 
 void TrackLog::_writeHeader(fs::File& f) {
-    f.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"TrailPuter\"><trk><trkseg>");
+    f.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"NavBox\"><trk><trkseg>");
 }
 
 void TrackLog::_writePoint(fs::File& f, const TrackPoint& p) {

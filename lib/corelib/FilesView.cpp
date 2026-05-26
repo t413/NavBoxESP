@@ -27,10 +27,12 @@ void FilesView::onRowAction(int idx) {
         setDir(next + text);
     } else if (strstr(text, ".gpx")) {
         if (ctrl_) {
+            showSpinner(true);
             std::string fullPath = currentDir_;
             if (fullPath.back() != '/') fullPath += "/";
             fullPath += text;
             ctrl_->loadTrack(fullPath.c_str());
+            showSpinner(false);
         }
     }
 }
@@ -58,10 +60,12 @@ void FilesView::refresh() {
     rows_.clear();
     focused_ = 0;
 
-    setHeader(currentDir_.c_str());
+    setHeader(("Load GPX path: " + currentDir_).c_str());
     MAP_LOG("filesview loading %s", currentDir_.c_str());
 
-    addRow("..", false);
+    if (currentDir_ != "/") {
+        addRow("..", "back", listc::COL_DIM);
+    }
 
     File dir = SD.open(currentDir_.c_str());
     if (!dir) {
@@ -74,8 +78,14 @@ void FilesView::refresh() {
         std::string name = entry.name();
 
         if (name[0] != '.') { // only show non-hidden stuff
-            if (entry.isDirectory()) name += "/";
-            addRow(name.c_str(), false);
+            if (entry.isDirectory()) {
+                addRow((name + "/").c_str(), "folder", listc::COL_DIM);
+            } else {
+                size_t dot = name.find_last_of('.');
+                std::string ext = (dot != std::string::npos) ? name.substr(dot + 1) : "";
+                auto color = (ext == "gpx") ? listc::COL_ACCENT : listc::COL_DIM;
+                addRow(name.c_str(), ext.c_str(), color);
+            }
         }
         entry.close();
     }

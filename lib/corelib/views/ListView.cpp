@@ -21,11 +21,12 @@ void ListView::create(lv_obj_t* parent, Controller* ctrl) {
     lv_obj_set_style_border_side(header_, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(header_, lv_color_hex(COL_BORDER), 0);
     lv_obj_set_style_border_width(header_, 1, 0);
+    lv_obj_set_scrollbar_mode(header_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_all(header_, 2, 0);
 
     headerLabel_ = lv_label_create(header_);
     lv_obj_set_align(headerLabel_, LV_ALIGN_CENTER);
-    lv_obj_set_style_text_font(headerLabel_, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_font(headerLabel_, &lv_font_montserrat_12, 0);
     lv_obj_set_style_text_color(headerLabel_, lv_color_hex(COL_ACCENT), 0);
     lv_label_set_text(headerLabel_, "");
 
@@ -43,16 +44,16 @@ void ListView::setHeader(const char* label) {
     lv_label_set_text(headerLabel_, label);
 }
 
-void ListView::addRow(const char* name, bool hasValue, bool isStatus) {
+int ListView::addRow(const char* name, const char* value, uint32_t valColor) {
     lv_obj_t* row = lv_obj_create(listCont_);
-    lv_obj_set_width(row, LV_PCT(100));
+    lv_obj_set_width(row, LV_PCT(98));
     lv_obj_set_height(row, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_ver(row, 4, 0);
     lv_obj_set_style_pad_hor(row, 6, 0);
     lv_obj_set_style_radius(row, 2, 0);
     lv_obj_set_style_bg_color(row, lv_color_hex(COL_ROW), 0);
     lv_obj_set_style_bg_color(row, lv_color_hex(COL_ROW_SEL), LV_STATE_FOCUSED);
-    lv_obj_set_style_border_width(row, isStatus ? 2 : 1, 0);
+    lv_obj_set_style_border_width(row, 1, 0);
     lv_obj_set_style_border_color(row, lv_color_hex(COL_BORDER), 0);
     lv_obj_set_style_border_color(row, lv_color_hex(COL_ACCENT), LV_STATE_FOCUSED);
     lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
@@ -65,12 +66,14 @@ void ListView::addRow(const char* name, bool hasValue, bool isStatus) {
     lv_obj_set_flex_grow(nameLbl, 1);
 
     lv_obj_t* valLbl = nullptr;
-    if (hasValue) {
+    if (value) {
         valLbl = lv_label_create(row);
+        lv_label_set_text(valLbl, value);
         lv_obj_set_style_text_font(valLbl, &lv_font_montserrat_10, 0);
-        lv_obj_set_style_text_color(valLbl, lv_color_hex(COL_DIM), 0);
+        lv_obj_set_style_text_color(valLbl, lv_color_hex(valColor ? valColor : COL_DIM), 0);
     }
     rows_.push_back({row, nameLbl, valLbl});
+    return rows_.size() - 1;
 }
 
 void ListView::setRowValue(int idx, const char* val, uint32_t color) {
@@ -82,6 +85,22 @@ void ListView::setRowValue(int idx, const char* val, uint32_t color) {
 void ListView::setRowBorder(int idx, uint32_t color) {
     if (idx < 0 || idx >= rows_.size()) return;
     lv_obj_set_style_border_color(rows_[idx].container, lv_color_hex(color), 0);
+}
+
+void ListView::showSpinner(bool show) {
+    if (show) {
+        if (spinner_) return;
+        spinner_ = lv_spinner_create(root_, 1000, 60);
+        lv_obj_add_flag(spinner_, LV_OBJ_FLAG_FLOATING);
+        lv_obj_set_size(spinner_, 40, 40);
+        lv_obj_align(spinner_, LV_ALIGN_CENTER, 0, 0);
+        lv_obj_set_style_arc_color(spinner_, lv_color_hex(COL_ACCENT), LV_PART_INDICATOR);
+        lv_timer_handler(); // Force render
+    } else {
+        if (!spinner_) return;
+        lv_obj_del(spinner_);
+        spinner_ = nullptr;
+    }
 }
 
 void ListView::activateRow(int idx) {
