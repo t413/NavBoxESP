@@ -7,6 +7,12 @@ namespace fs {
     class File;
 }
 
+struct TrackStats {
+    float totalDist;
+    float totalElevGain, totalElevLoss;
+    float maxAltitude, minAltitude;
+};
+
 class TrackLog {
 public:
     TrackLog(const char* pathbase=nullptr) : pathbase_(pathbase) { }
@@ -22,8 +28,10 @@ public:
     bool isRecording() const { return isRecording_; }
     const char* getRecPath() const { return currentPath_; }
     GeoPoint calcCenter() const;
+    const TrackStats& getStats() const { return stats_; }
 
 private:
+    void _updateStats(const TrackPoint& point, const TrackPoint& prev);
     void _writeHeader(fs::File& f);
     void _writePoint(fs::File& f, const TrackPoint& p);
     void _writeFooter(fs::File& f);
@@ -33,7 +41,9 @@ private:
 
     std::vector<GeoPoint> path_; //whole sparse track
     std::vector<TrackPoint> buffer_; //all raw points, written to GPX file
+    TrackPoint lastPoint_;
     char currentPath_[64] = "";
+    TrackStats stats_ = {0};
     bool isRecording_ = false;
     uint32_t lastFlushTime_ = 0;
     const char* pathbase_ = nullptr;

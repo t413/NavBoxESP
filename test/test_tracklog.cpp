@@ -58,6 +58,11 @@ TEST(TrackLog, GPXLoadSave) {
     MAP_LOG("RAW [%d] points -> [%d path]", tl.recordedPoints_, tl.points().size());
     EXPECT_EQ(tl.recordedPoints_, 51);
 
+    // Verify Stats
+    auto stats = tl.getStats();
+    EXPECT_GT(stats.totalDist, 500.0f); // 50 points * ~15m
+    EXPECT_FLOAT_EQ(stats.maxAltitude, 10.0f);
+
     // Verify file content manually
     std::ifstream ifs(testPath);
     std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));

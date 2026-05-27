@@ -7,6 +7,9 @@
 void TrackLog::clear() {
     path_.clear();
     buffer_.clear();
+    recordedPoints_ = 0;
+    stats_ = {0};
+    currentPath_[0] = 0;
     isRecording_ = false;
 }
 
@@ -30,6 +33,7 @@ void TrackLog::_epochToIso(uint32_t epoch, char* out, uint16_t outsize) {
 bool TrackLog::load(const char* path) {
     fs::File f = SD.open(path);
     if (!f) return false;
+    clear();
     MAP_LOG("TrackLog::load %s", path);
     strncpy(currentPath_, path, sizeof(currentPath_)); //save opened path
     clear();
@@ -83,13 +87,15 @@ GeoPoint TrackLog::calcCenter() const {
 bool TrackLog::beginRecording(uint32_t epoch) {
     if (isRecording_) return false;
     if (pathbase_) {
-        if (!SD.exists(pathbase_)) SD.mkdir(pathbase_);
+        if (currentPath_[0] == 0) {
+            if (!SD.exists(pathbase_)) SD.mkdir(pathbase_);
 
-        char isoTime[24];
-        _epochToIso(epoch, isoTime, sizeof(isoTime));
-        for (int i = 0; isoTime[i]; i++)
-            if (isoTime[i] == ':') isoTime[i] = '-'; // Replace colons with dashes for filename compatibility
-        snprintf(currentPath_, sizeof(currentPath_), "%s/%s.gpx", pathbase_, isoTime);
+            char isoTime[24];
+            _epochToIso(epoch, isoTime, sizeof(isoTime));
+            for (int i = 0; isoTime[i]; i++)
+                if (isoTime[i] == ':') isoTime[i] = '-'; // Replace colons with dashes for filename compatibility
+            snprintf(currentPath_, sizeof(currentPath_), "%s/%s.gpx", pathbase_, isoTime);
+        }
 
         fs::File f;
         if (SD.exists(currentPath_)) {
@@ -107,7 +113,6 @@ bool TrackLog::beginRecording(uint32_t epoch) {
     }
     isRecording_ = true;
     lastFlushTime_ = millis();
-    recordedPoints_ = 0;
     return true;
 }
 
@@ -128,7 +133,24 @@ bool TrackLog::addPoint(const TrackPoint& p) {
     if (path_.empty() || path_.back().approxDistTo(p) > minDist_) {
         path_.push_back(p);
     }
+    _updateStats(p, lastPoint_);
+    lastPoint_ = p;
     return true;
+}
+
+void TrackLog::_updateStats(const TrackPoint& point, const TrackPoint& prev) {
+    if (path_.empty()) {
+        stats_.minAltitude = stats_.maxAltitude = 0;
+        return;
+    }
+    stats_.totalDist += prev.approxDistTo(point);
+    if (point != NO_LOCATION) { // Only if TrackPoint with valid alt
+        float delta = point.alt - prev.alt;
+        if (delta > 0) stats_.totalElevGain += delta;
+        else stats_.totalElevLoss -= delta;
+        if (point.alt > stats_.maxAltitude) stats_.maxAltitude = point.alt;
+        if (point.alt < stats_.minAltitude) stats_.minAltitude = point.alt;
+    }
 }
 
 void TrackLog::flush() {
