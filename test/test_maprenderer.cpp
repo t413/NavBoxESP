@@ -95,29 +95,41 @@ TEST(MapRenderer, RealMapPositionRender) {
     fixtures::LvglTestEnv env(300, 200);
     MapRenderer map;
     map.cropmode_ = true;
-    const char* TILES_PATH = "/Users/timo/Documents/t4ds/static/ext/tiles/%d/%d/%d.png";
-
-    auto ret = map.begin(env.base_, env.width_, env.height_, TILES_PATH);
+    const char* TILES_FMT = "/%d/%d/%d.png";
+    std::filesystem::path tilesdir = "/Users/timo/Documents/t4ds/static/ext/tiles";
+    if (!filesystem::is_directory(tilesdir)) {
+        MAP_LOG("WARNING CAN'T RUN TEST WITHOUT TILES");
+        return;
+    }
+    string tfmt = string(tilesdir) + string(TILES_FMT);
+    auto ret = map.begin(env.base_, env.width_, env.height_, tfmt.c_str());
     EXPECT_TRUE(ret);
 
     map.setCenter({37.87, -122.32}, 16); //CCP at zoom 16
     map.setDot(37.87037,-122.32285); //37.87255,-122.32037
     map.setHome(37.87125,-122.31767);
-    env.draw(); //do a full lvgl render
-    env.save();
+    int saveidx = 0;
+    auto drawsave = [&env,&map,&saveidx](string extra="") {
+        env.draw(); //do a full lvgl render
+        env.save(fmtstr("_change%d-z%d-m%d", saveidx++, map.zoom(), map.magnification()) + extra);
+    };
+    drawsave();
 
     map.invalidate();
-    env.draw(); //do a full lvgl render
-    env.save("_change0");
+    drawsave();
 
     MAP_LOG("SETTING DOT");
     map.setDot(37.8705,-122.320); //move dot closer-in
     MAP_LOG("SETTING DOT DONE");
     map.invalidate();
-    env.draw(); //do a full lvgl render
-    env.save("_change1");
+    drawsave();
 
     map.setCenter({37.8705,-122.320}); //center map on dot
-    env.draw(); //do a full lvgl render
-    env.save("_change2");
+    drawsave();
+
+    map.setZoom(15, 2); //zoomed out, maginified-in
+    drawsave();
+
+    map.setZoom(14, 3); //zoomed out, maginified-in
+    drawsave();
  }

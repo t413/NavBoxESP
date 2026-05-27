@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <lvgl.h>
+#include <filesystem>
 
 namespace fixtures {
 
@@ -32,12 +33,14 @@ struct LvglTestEnv {
     lv_obj_t* base_ = nullptr;
     uint16_t width_ = 0, height_ = 0;
 
-    LvglTestEnv(uint16_t width, uint16_t height);
+    LvglTestEnv(uint16_t width, uint16_t height, bool clearfirst = true);
     ~LvglTestEnv();
     void reset(uint16_t width=0, uint16_t height=0);
 
     void draw();
+    std::filesystem::path outdir() const;
     void save(std::string suffix="_canvas");
+    void clearfiles();
 };
 
 } //fixtures

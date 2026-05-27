@@ -4,7 +4,6 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 #include <sys/stat.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -92,7 +91,10 @@ TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img, string fn) {
 void TmpFileHelper::rm() { remove(fn_.c_str()); }
 
 
-LvglTestEnv::LvglTestEnv(uint16_t width, uint16_t height) { reset(width, height); }
+LvglTestEnv::LvglTestEnv(uint16_t width, uint16_t height, bool clear) {
+    reset(width, height);
+    if (clear) clearfiles();
+}
 
 LvglTestEnv::~LvglTestEnv() {
     reset();
@@ -136,14 +138,30 @@ void LvglTestEnv::draw() {
     }
 }
 
+filesystem::path LvglTestEnv::outdir() const {
+    return filesystem::current_path() / "testoutputs";
+}
+
 void LvglTestEnv::save(std::string suffix) {
-    filesystem::path dir = filesystem::current_path() / "testoutputs";
     try {
+        auto dir = outdir();
         filesystem::create_directories(dir);
         auto fn = dir / ("test_" + testname() + suffix + ".png");
         draw_lvgl_png(&disp_drv_, fn.c_str());
     } catch (const filesystem::filesystem_error& e) {
         MAP_LOG("fs error %s", e.what());
+    }
+}
+
+void LvglTestEnv::clearfiles() {
+    auto dir = outdir();
+    if (filesystem::exists(dir) && filesystem::is_directory(dir)) {
+        //remove all tests that start with "test_" + testname() *
+        for (const auto& entry : filesystem::directory_iterator(dir)) {
+            if (entry.is_regular_file() && entry.path().filename().string().find("test_" + testname()) == 0) {
+                filesystem::remove(entry.path());
+            }
+        }
     }
 }
 

@@ -16,6 +16,7 @@ public:
     void onKey(uint8_t key) override;
     bool handleBack() override;
     void setCenter(const GeoPoint &);
+    MapRenderer& getMap() { return map_; }
 
 private:
     _lv_obj_t* root_ = nullptr;
