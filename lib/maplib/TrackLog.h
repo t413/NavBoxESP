@@ -32,6 +32,10 @@ public:
     GeoPoint calcCenter() const;
     const TrackStats& getStats() const { return stats_; }
 
+    static bool shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdMeters);
+    static uint16_t simplifyRadial(std::vector<GeoPoint>& path, float thresholdMeters);
+    uint16_t simplify(float thresholdMeters = 2.0);
+
 private:
     void _writeHeader(fs::File& f);
     void _writePoint(fs::File& f, const TrackPoint& p);
@@ -53,7 +57,7 @@ private:
     const char* pathbase_ = nullptr;
 public:
     uint32_t recordedPoints_ = 0;
-    double minDist_ = 10.0; //m
+    double minDist_ = 3.0; //m
     uint16_t maxRawPoints_ = 10;
     uint32_t maxRawUnFlush_ = 15000; //ms
 };

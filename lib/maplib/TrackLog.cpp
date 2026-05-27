@@ -146,6 +146,9 @@ bool TrackLog::addPoint(const TrackPoint& p) {
     recordedPoints_++;
     stats_.update(p, lastPoint_);
     lastPoint_ = p;
+    if ((recordedPoints_ % 75) == 0) {
+        simplify();
+    }
     return true;
 }
 
@@ -189,6 +192,41 @@ void TrackLog::_writePoint(fs::File& f, const TrackPoint& p) {
 
 void TrackLog::_writeFooter(fs::File& f) {
     f.println("</trkseg></trk></gpx>");
+}
+
+bool TrackLog::shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdMeters) {
+    if (idx == 0 || idx == path.size() - 1) return true; // always keep endpoints
+    const auto& prev = path[idx - 1];
+    const auto& curr = path[idx];
+    const auto& next = path[idx + 1];
+    if (!prev || !curr || !next) return true; // Skip if neighbors are invalid
+    double dist = curr.lineDist(prev, next);
+    return dist > thresholdMeters;
+}
+
+uint16_t TrackLog::simplifyRadial(std::vector<GeoPoint>& path, float thresholdMeters) {
+    if (path.empty()) return 0;
+    auto startsz = (uint16_t)path.size();
+    // cull points
+    for (size_t i = 1; i < path.size() - 1; ++i) {
+        if (!shouldKeepPoint(i, path, thresholdMeters)) {
+            path[i] = GeoPoint(); // invalidate
+        }
+    }
+    // Compact in-place: move valid points to front
+    size_t writeIdx = 0;
+    for (size_t readIdx = 0; readIdx < path.size(); ++readIdx) {
+        if (path[readIdx]) { // operator bool() checks NO_LOCATION
+            path[writeIdx++] = path[readIdx];
+        }
+    }
+    path.resize(writeIdx);
+    MAP_LOG("simplifyRadial: %d -> %d points (cap %d)", startsz, (uint16_t) writeIdx, (uint16_t) path.capacity());
+    return (uint16_t) writeIdx;
+}
+
+uint16_t TrackLog::simplify(float thresholdMeters) {
+    return simplifyRadial(path_, thresholdMeters);
 }
 
 uint32_t TrackLog::_findTailOffset(fs::File& f) {

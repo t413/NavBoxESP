@@ -1,4 +1,5 @@
 #include "GeoPoint.h"
+#include <algorithm>
 
 GeoPoint::GeoPoint(double l, double n) : lat_e7((int32_t)(l * GEO_E7)), lon_e7((int32_t)(n * GEO_E7)) { }
 GeoPoint::operator bool() const { return lat_e7 != NO_LOCATION && lon_e7 != NO_LOCATION; }
@@ -24,6 +25,22 @@ double GeoPoint::approxDistTo(const GeoPoint& o) const {
     return sqrt(x*x + y*y) * M_PI * EARTH_RADIUS / 180.0;
 }
 
+float GeoPoint::lineDist(const GeoPoint& a, const GeoPoint& b) const {
+    // Vector from a to b
+    float px = b.lon() - a.lon();
+    float py = b.lat() - a.lat();
+    float plen2 = px*px + py*py;
+    if (plen2 < 1e-18) return distTo(a); // degenerate: a ≈ b
+    // Vector from a to this point
+    float ax = lon() - a.lon();
+    float ay = lat() - a.lat();
+    // Project onto line, clamp to [0, 1]
+    float t = (ax*px + ay*py) / plen2;
+    t = std::max(0.0f, std::min(1.0f, t));
+    // Closest point on segment
+    GeoPoint closest(a.lat() + t*py, a.lon() + t*px);
+    return distTo(closest);
+}
 
 void GeoPoint::distHeadingPoint(double dist, double headingDeg, GeoPoint& out) const {
     double ad = dist / EARTH_RADIUS;

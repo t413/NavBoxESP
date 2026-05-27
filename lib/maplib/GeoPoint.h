@@ -17,6 +17,7 @@ struct GeoPoint {
     double lon() const;
     double distTo(const GeoPoint&) const;
     double approxDistTo(const GeoPoint&) const;
+    float lineDist(const GeoPoint& a, const GeoPoint& b) const;
 };
 
 

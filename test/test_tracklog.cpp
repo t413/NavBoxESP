@@ -49,18 +49,20 @@ TEST(TrackLog, GPXLoadSave) {
     p1.epoch = 1716610000; // Fixed timestamp
     tl.addPoint(p1);
 
-    for (int i = 0; i < 50; i++) {
-        const double dist = 15.0 + (i % 10);
-        const double heading = (i * 13) % 360;
-        TrackPoint p = p1.fromDistHeading(dist, heading);
+    TrackPoint last = p1;
+    for (int i = 0; i < 100; i++) {
+        const double dist = 1.0 + (i % 10); // Spacing from 1 to 10m
+        const double heading = 45.0 + (i % 20); // Consistent-ish heading
+        TrackPoint p = last.fromDistHeading(dist, heading);
         p.alt = 100 + ((i % 10) * 10);
         p.epoch = 1716610000 + (i * 10);
         tl.addPoint(p);
+        last = p;
     }
 
     tl.stopRecording();
     MAP_LOG("RAW [%d] points -> [%d path]", tl.recordedPoints_, (int)tl.points().size());
-    EXPECT_EQ(tl.recordedPoints_, 51);
+    EXPECT_EQ(tl.recordedPoints_, 101);
 
     // Verify Stats
     auto stats = tl.getStats();
@@ -79,6 +81,7 @@ TEST(TrackLog, GPXLoadSave) {
     EXPECT_TRUE(tl2.load(testPath));
     EXPECT_GT(tl2.points().size(), 20);
     EXPECT_NEAR(tl2.points()[0].lat(), 37.8044, 0.0001);
+    tl2.simplify();
     remove(testPath);
 }
 
@@ -107,4 +110,13 @@ TEST(TrackLog, ResumeAndClear) {
     EXPECT_STREQ(tl.getRecPath(), "");
     EXPECT_FALSE(tl.isRecording());
     remove(fn.c_str());
+}
+
+TEST(TrackLog, simplify) {
+    std::vector<GeoPoint> testPath = {
+        {37.0, -122.0},
+        {37.00001, -122.00001},  // very close, should cull
+        {37.0001, -122.0001},
+    };
+    TrackLog::simplifyRadial(testPath, 10.0f); // keep only if >10m from neighbors
 }
