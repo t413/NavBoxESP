@@ -44,13 +44,13 @@ void MapView::onGPSUpdate(GpsManager* gps) {
     auto point = gps->toPoint();
     _updateSidebar(&point);
 
-    map_.setDot(point.lat, point.lon);
+    map_.setDot(point.lat(), point.lon());
 
     if (followMode_ && gps->hasFix()) {
         bool needsCenter = true;
         if (map_.cropmode_) {
             lv_coord_t px, py;
-            map_.project(point.lat, point.lon, px, py);
+            map_.project(point.lat(), point.lon(), px, py);
             if (map_.isVisible(px, py)) { //TODO recenter more often, but not too often
                 needsCenter = false;
             }

@@ -119,7 +119,7 @@ bool MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py
     double tx, ty;
     _latLonToTileF(lat, lon, zoom_, tx, ty);
     double cx, cy;
-    _latLonToTileF(mapCenter_.lat, mapCenter_.lon, zoom_, cx, cy);
+    _latLonToTileF(mapCenter_.lat(), mapCenter_.lon(), zoom_, cx, cy);
     px = (lv_coord_t)round((tx - cx) * tileSize_ + width_ / 2);
     py = (lv_coord_t)round((ty - cy) * tileSize_ + height_ / 2);
     return isVisible(px, py);
@@ -157,13 +157,13 @@ void MapRenderer::_updateMarkers() {
     if (!posDot_ || !homeMarker_) return;
     lv_coord_t px = -1, py = -1;
 
-    if (dot_ && project(dot_.lat, dot_.lon, px, py)) {
+    if (dot_ && project(dot_.lat(), dot_.lon(), px, py)) {
         lv_obj_clear_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_pos(posDot_, px - dotsize_ / 2, py - dotsize_ / 2);
         // lv_obj_invalidate(posDot_);
     } else lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
 
-    if (home_ && project(home_.lat, home_.lon, px, py)) {
+    if (home_ && project(home_.lat(), home_.lon(), px, py)) {
         lv_obj_clear_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_pos(homeMarker_, px - homesize_ / 2, py - homesize_ / 2);
     } else lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
@@ -171,8 +171,8 @@ void MapRenderer::_updateMarkers() {
 
 void MapRenderer::panPx(int dx, int dy) {
     double scale = (double)tileSize_ * pow(2.0, zoom_);
-    double ty = _latToTileY(mapCenter_.lat, zoom_) + (double)dy / tileSize_;
-    setCenter({_tileYToLat(ty, zoom_), mapCenter_.lon + dx / scale * 360.0});
+    double ty = _latToTileY(mapCenter_.lat(), zoom_) + (double)dy / tileSize_;
+    setCenter({_tileYToLat(ty, zoom_), mapCenter_.lon() + dx / scale * 360.0});
 }
 
 void MapRenderer::_latLonToTileF(double lat, double lon, int z, double& tx, double& ty) {
@@ -210,7 +210,7 @@ int MapRenderer::_findSlot() {
 
 void MapRenderer::_updateTiles() {
     if (!obj_) return;
-    double tx, ty; _latLonToTileF(mapCenter_.lat, mapCenter_.lon, zoom_, tx, ty);
+    double tx, ty; _latLonToTileF(mapCenter_.lat(), mapCenter_.lon(), zoom_, tx, ty);
     int nTiles = (int)pow(2.0, zoom_);
 
     const int tx_s = (int)floor(tx - (double)width_ / 2 / tileSize_);

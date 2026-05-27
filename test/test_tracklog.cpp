@@ -20,12 +20,12 @@ TEST(TrackLog, decimation) {
 
     tl.addPoint(p1);
     EXPECT_EQ(tl.points().size(), 1);
-    MAP_LOG("p1 <%0.5f,%0.5f>", p1.lat, p1.lon);
+    MAP_LOG("p1 <%0.5f,%0.5f>", p1.lat(), p1.lon());
 
     // Point 5m away (should be rejected)
     const auto lowdist = tl.minDist_ / 2;
     TrackPoint p2 = p1.fromDistHeading(lowdist, 90.0);
-    MAP_LOG("p2 <%0.5f,%0.5f>", p2.lat, p2.lon);
+    MAP_LOG("p2 <%0.5f,%0.5f>", p2.lat(), p2.lon());
     EXPECT_NEAR(p1.distTo(p2),       lowdist, 0.1);
     EXPECT_NEAR(p1.approxDistTo(p2), lowdist, 0.1);
     tl.addPoint(p2);
@@ -68,5 +68,5 @@ TEST(TrackLog, GPXLoadSave) {
     TrackLog tl2;
     EXPECT_TRUE(tl2.load(testPath));
     EXPECT_EQ(tl2.points().size(), 2);
-    EXPECT_NEAR(tl2.points()[0].lat, 37.8044, 0.0001);
+    EXPECT_NEAR(tl2.points()[0].lat(), 37.8044, 0.0001);
 }

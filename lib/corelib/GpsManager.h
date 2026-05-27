@@ -10,8 +10,8 @@ public:
     ~GpsManager();
 
     bool      hasFix()    const { return _hasFix; }
-    double    lat()       const { return _currentPoint.lat; }
-    double    lon()       const { return _currentPoint.lon; }
+    double    lat()       const { return _currentPoint.lat(); }
+    double    lon()       const { return _currentPoint.lon(); }
     float     alt()       const { return _currentPoint.alt; }
     float     speedMs()   const { return speed_; }
     float     hdop()      const { return hdoop_; }

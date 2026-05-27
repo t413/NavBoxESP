@@ -4,14 +4,17 @@
 #include <cmath>
 
 
-constexpr double NO_LOCATION = (double)(INT_MIN);
+constexpr int NO_LOCATION = (INT_MIN);
 constexpr const double DEG_2_RAD = (M_PI / 180.0);
+constexpr const double GEO_E7 = 1e7;
 
 struct GeoPoint {
-    float lat = 0, lon = 0;
+    int32_t lat_e7, lon_e7;  // latitude * 10^7 (sub-meter precision)
     GeoPoint(double l = NO_LOCATION, double n = NO_LOCATION);
     void distHeadingPoint(double dist, double headingDeg, GeoPoint& out) const;
     operator bool() const;
+    double lat() const;
+    double lon() const;
     double distTo(const GeoPoint&) const;
     double approxDistTo(const GeoPoint&) const;
 };

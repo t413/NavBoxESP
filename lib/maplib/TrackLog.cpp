@@ -43,8 +43,7 @@ bool TrackLog::load(const char* path) {
             char* latStr = strstr(p, "lat=\"");
             char* lonStr = strstr(p, "lon=\"");
             if (latStr && lonStr) {
-                pt.lat = atof(latStr + 5);
-                pt.lon = atof(lonStr + 5);
+                pt = GeoPoint(atof(latStr + 5), atof(lonStr + 5));
                 if (path_.empty() || path_.back().approxDistTo(pt) > minDist_) {
                     path_.push_back(pt);
                     if (path_.size() % 10 == 0) {
@@ -69,10 +68,11 @@ GeoPoint TrackLog::calcCenter() const {
     if (path_.empty()) return {};
     float minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
     for (const auto& p : path_) {
-        if (p.lat < minLat) minLat = p.lat;
-        if (p.lat > maxLat) maxLat = p.lat;
-        if (p.lon < minLon) minLon = p.lon;
-        if (p.lon > maxLon) maxLon = p.lon;
+        auto lat = p.lat(), lon = p.lon();
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+        if (lon < minLon) minLon = lon;
+        if (lon > maxLon) maxLon = lon;
     }
     return {
         (minLat + maxLat) * 0.5f,
@@ -160,7 +160,7 @@ void TrackLog::_writeHeader(fs::File& f) {
 void TrackLog::_writePoint(fs::File& f, const TrackPoint& p) {
     char isoTime[24];
     _epochToIso(p.epoch, isoTime, sizeof(isoTime));
-    f.printf("  <trkpt lat=\"%.7f\" lon=\"%.7f\"><ele>%.1f</ele><time>%s</time></trkpt>\n", p.lat, p.lon, p.alt, isoTime);
+    f.printf("  <trkpt lat=\"%.7f\" lon=\"%.7f\"><ele>%.1f</ele><time>%s</time></trkpt>\n", p.lat(), p.lon(), p.alt, isoTime);
 }
 
 void TrackLog::_writeFooter(fs::File& f) {
@@ -201,7 +201,7 @@ void TrackLogViewer::update(MapRenderer* renderer, TrackLog* track) {
     int firstVisible = -1, lastVisible = -1;
     for (int i = 0; i < (int)points.size(); ++i) {
         lv_coord_t px, py;
-        renderer->project(points[i].lat, points[i].lon, px, py);
+        renderer->project(points[i].lat(), points[i].lon(), px, py);
         if (px > -50 && px < renderer->width_ + 50 &&
             py > -50 && py < renderer->height_ + 50) {
             if (firstVisible == -1) firstVisible = i;
@@ -226,7 +226,7 @@ void TrackLogViewer::update(MapRenderer* renderer, TrackLog* track) {
     int skipped = 0;
     for (int i = firstVisible; i <= lastVisible && pointCount < MAX_PTS; ++i) {
         lv_coord_t px, py;
-        renderer->project(points[i].lat, points[i].lon, px, py);
+        renderer->project(points[i].lat(), points[i].lon(), px, py);
         bool onScreen = (px > -50 && px < renderer->width_ + 50 &&
                          py > -50 && py < renderer->height_ + 50);
         if (!onScreen) continue;
@@ -240,7 +240,7 @@ void TrackLogViewer::update(MapRenderer* renderer, TrackLog* track) {
     // Always include the last visible point so the line reaches the edge
     if (pointCount > 0 && lastVisible != -1) {
         lv_coord_t px, py;
-        renderer->project(points[lastVisible].lat, points[lastVisible].lon, px, py);
+        renderer->project(points[lastVisible].lat(), points[lastVisible].lon(), px, py);
         if (lvPoints[pointCount - 1].x != px || lvPoints[pointCount - 1].y != py) {
             if (pointCount < MAX_PTS) {
                 lvPoints[pointCount].x = px;

@@ -46,8 +46,8 @@ public:
     void setTracks(TrackLog* record, TrackLog* view);
 
     int   zoom() const { return zoom_; }
-    double lat() const { return mapCenter_.lat; }
-    double lon() const { return mapCenter_.lon; }
+    double lat() const { return mapCenter_.lat(); }
+    double lon() const { return mapCenter_.lon(); }
     const GeoPoint& getCenter() const { return mapCenter_; }
     const GeoPoint& getHome() const { return home_; }
     const GeoPoint& getDot() const { return dot_; }
