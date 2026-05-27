@@ -26,6 +26,16 @@ TEST(MapRenderer, latlonToTile) {
     MAP_LOG("xy %.2f, %.2f", x, y);
     EXPECT_EQ((int) x, 21000);
     EXPECT_EQ((int) y, 50618);
+
+    // Test lat <-> tileY roundtrip
+    double lat = 37.87;
+    double ty = MapRenderer::_latToTileY(lat, 14);
+    EXPECT_NEAR(ty, 6327, 1.0);
+    EXPECT_NEAR(MapRenderer::_tileYToLat(ty, 14), lat, 0.0001);
+
+    // Test equator
+    EXPECT_NEAR(MapRenderer::_latToTileY(0.0, 10), 512.0, 0.0001);
+    EXPECT_NEAR(MapRenderer::_tileYToLat(512.0, 10), 0.0, 0.0001);
 }
 
 TEST(MapRenderer, SetupAndProjection) {
@@ -36,7 +46,7 @@ TEST(MapRenderer, SetupAndProjection) {
     auto ret = map.begin(env.base_, env.width_, env.height_, TILE_FMT.c_str());
     EXPECT_TRUE(ret);
 
-    map.invalidate();
+    map.setCenter({0.0, 0.0}, TEST_Z);
     env.draw(); //do a full lvgl render
 
     double tx = 0, ty = 0;
@@ -56,9 +66,14 @@ TEST(MapRenderer, SetupAndProjection) {
 TEST(MapRenderer, PanLogic) {
     MapRenderer map;
     map.begin(NULL, 300, 300, TILE_FMT.c_str());
+    map.setCenter({0.0, 0.0});
+    lv_coord_t center_px, center_py;
+    map.project(0.0, 0.0, center_px, center_py);
+    EXPECT_EQ(center_px, 150);
+    EXPECT_EQ(center_py, 150);
 
     for (uint8_t z = 2; z < 18; z++) {
-        map.setCenter(0.0, 0.0);
+        map.setCenter({0.0, 0.0});
         map.setZoom(z);
         map.panPx(100, 0); //move not entirely out of view
         EXPECT_NEAR(map.lat(), 0.0, 0.001); //unchanged
@@ -71,6 +86,8 @@ TEST(MapRenderer, PanLogic) {
         map.project(0.0, 0.0, px, py);
         EXPECT_TRUE(map.isVisible(px, py));
         MAP_LOG("mv z%d -> <%5.5f,%5.5f> -> [%d,%d]", z, map.lat(), map.lon(), px, py);
+        EXPECT_EQ(px, 50);
+        EXPECT_EQ(py, 50);
     }
 }
 
@@ -83,7 +100,7 @@ TEST(MapRenderer, RealMapPositionRender) {
     auto ret = map.begin(env.base_, env.width_, env.height_, TILES_PATH);
     EXPECT_TRUE(ret);
 
-    map.setCenter(37.87, -122.32, 16); //CCP at zoom 16
+    map.setCenter({37.87, -122.32}, 16); //CCP at zoom 16
     map.setDot(37.87037,-122.32285); //37.87255,-122.32037
     map.setHome(37.87125,-122.31767);
     env.draw(); //do a full lvgl render
@@ -100,7 +117,7 @@ TEST(MapRenderer, RealMapPositionRender) {
     env.draw(); //do a full lvgl render
     env.save("_change1");
 
-    map.setCenter(37.8705,-122.320); //center map on dot
+    map.setCenter({37.8705,-122.320}); //center map on dot
     env.draw(); //do a full lvgl render
     env.save("_change2");
  }
