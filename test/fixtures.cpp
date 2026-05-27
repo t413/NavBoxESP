@@ -3,6 +3,7 @@
 #include <log.h>
 #include <vector>
 #include <fstream>
+#include <iostream>
 #include <filesystem>
 #include <sys/stat.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -31,6 +32,13 @@ std::string testname() {
 
 std::string cwd() {
     return std::filesystem::current_path();
+}
+
+void printfile(const char* fn) {
+    std::ifstream ifs(fn);
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    std::cout << " -- contents of " << fn << " -- " << std::endl;
+    std::cout << content << std::endl;
 }
 
 void draw_lvgl_png(lv_disp_drv_t* drv, const char* path) {

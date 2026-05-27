@@ -6,7 +6,7 @@
 
 void TrackLog::clear() {
     path_.clear();
-    buffer_.clear();
+    bufferPos_ = 0;
     recordedPoints_ = 0;
     stats_ = {0};
     currentPath_[0] = 0;
@@ -34,37 +34,39 @@ bool TrackLog::load(const char* path) {
     fs::File f = SD.open(path);
     if (!f) return false;
     clear();
-    MAP_LOG("TrackLog::load %s", path);
+    MAP_LOG("track: load %s", path);
     strncpy(currentPath_, path, sizeof(currentPath_)); //save opened path
     clear();
     char line[128];
+    isLoading_ = true;
+    uint16_t totallines = 0;
     while (f.available()) {
         int len = f.readBytesUntil('\n', line, sizeof(line) - 1);
         line[len] = '\0';
         char* p = strstr(line, "<trkpt");
         if (p) {
-            GeoPoint pt{};
             char* latStr = strstr(p, "lat=\"");
             char* lonStr = strstr(p, "lon=\"");
             if (latStr && lonStr) {
-                pt = GeoPoint(atof(latStr + 5), atof(lonStr + 5));
-                if (path_.empty() || path_.back().approxDistTo(pt) > minDist_) {
-                    path_.push_back(pt);
-                    if (path_.size() % 10 == 0) {
-                        MAP_LOG("track load at %d (heap %d)", path_.size(), freeHeap());
-                        lv_timer_handler(); //periodically run the UI
-                    }
-                    #ifdef ARDUINO
-                    if (freeHeap() < 3000) {
-                        MAP_LOG("track load OOM aborting");
-                        break;
-                    }
-                    #endif
+                TrackPoint pt(atof(latStr + 5), atof(lonStr + 5)); //TODO also parse epoc/alt
+                addPoint(pt);
+                if (recordedPoints_ % 50 == 0) {
+                    MAP_LOG("track: load at %d (heap %d)", (int) path_.size(), freeHeap());
+                    lv_timer_handler(); //periodically run the UI
                 }
+                #ifdef ARDUINO
+                if (freeHeap() < 3000) {
+                    MAP_LOG("track: load OOM aborting");
+                    break;
+                }
+                #endif
             }
+            totallines++;
         }
     }
     f.close();
+    isLoading_ = false;
+    MAP_LOG("track: done loading %d points from %d lines", (int) path_.size(), totallines);
     return true;
 }
 
@@ -84,35 +86,41 @@ GeoPoint TrackLog::calcCenter() const {
     };
 }
 
-bool TrackLog::beginRecording(uint32_t epoch) {
+bool TrackLog::newRecording(uint32_t epoch) {
     if (isRecording_) return false;
-    if (pathbase_) {
-        if (currentPath_[0] == 0) {
-            if (!SD.exists(pathbase_)) SD.mkdir(pathbase_);
+    clear(); //clear any existing recording file
 
-            char isoTime[24];
-            _epochToIso(epoch, isoTime, sizeof(isoTime));
-            for (int i = 0; isoTime[i]; i++)
-                if (isoTime[i] == ':') isoTime[i] = '-'; // Replace colons with dashes for filename compatibility
-            snprintf(currentPath_, sizeof(currentPath_), "%s/%s.gpx", pathbase_, isoTime);
-        }
-
-        fs::File f;
-        if (SD.exists(currentPath_)) {
-            f = SD.open(currentPath_, FILE_WRITE);
-            f.seek(_findTailOffset(f));
-        } else {
-            f = SD.open(currentPath_, FILE_WRITE);
-            _writeHeader(f);
-        }
-        _writeFooter(f);
-        f.close();
-        MAP_LOG("recording to %s", currentPath_);
-    } else {
-        MAP_LOG("recording without file");
+    if (!pathbase_) {
+        MAP_LOG("track: rec without file base");
+        return false;
     }
+    if (!SD.exists(pathbase_)) SD.mkdir(pathbase_);
+
+    char isoTime[24];
+    _epochToIso(epoch, isoTime, sizeof(isoTime));
+    for (int i = 0; isoTime[i]; i++)
+        if (isoTime[i] == ':') isoTime[i] = '-'; // Replace colons with dashes for filename compatibility
+    snprintf(currentPath_, sizeof(currentPath_), "%s/%s.gpx", pathbase_, isoTime);
+
+    fs::File f = SD.open(currentPath_, FILE_WRITE);
+    _writeHeader(f);
+    _writeFooter(f);
+    MAP_LOG("track: rec new file %s size %d", currentPath_, (int) f.position());
+    f.close();
     isRecording_ = true;
     lastFlushTime_ = millis();
+    return true;
+}
+
+bool TrackLog::recordResume(uint32_t epoch) {
+    if (isRecording_) return false;
+    if (currentPath_[0] != 0 && SD.exists(currentPath_)) {
+        MAP_LOG("track: resuming %s", currentPath_);
+        isRecording_ = true;
+        lastFlushTime_ = millis();
+    } else {
+        newRecording(epoch);
+    }
     return true;
 }
 
@@ -120,58 +128,52 @@ void TrackLog::stopRecording() {
     if (!isRecording_) return;
     flush();
     isRecording_ = false;
-    MAP_LOG("end recording to %s, wrote %d points", currentPath_, recordedPoints_);
+    MAP_LOG("track: end rec to %s, wrote %d points", currentPath_, recordedPoints_);
 }
 
 bool TrackLog::addPoint(const TrackPoint& p) {
-    if (!isRecording_) return false;
-    buffer_.push_back(p); //all points
-    recordedPoints_++;
-    if (buffer_.size() >= maxRawPoints_ || ((millis() - lastFlushTime_) > maxRawUnFlush_)) {
-        flush();
+    if (!isRecording_ && !isLoading_) return false;
+    if (!isLoading_) {
+        if (bufferPos_ < BUFF_SIZE) //limit max size
+            buffer_[bufferPos_++] = p; //all points
+        if (bufferPos_ >= maxRawPoints_ || ((millis() - lastFlushTime_) > maxRawUnFlush_)) {
+            flush();
+        }
     }
     if (path_.empty() || path_.back().approxDistTo(p) > minDist_) {
         path_.push_back(p);
     }
-    _updateStats(p, lastPoint_);
+    recordedPoints_++;
+    stats_.update(p, lastPoint_);
     lastPoint_ = p;
     return true;
 }
 
-void TrackLog::_updateStats(const TrackPoint& point, const TrackPoint& prev) {
-    if (path_.empty()) {
-        stats_.minAltitude = stats_.maxAltitude = 0;
-        return;
-    }
-    stats_.totalDist += prev.approxDistTo(point);
-    if (point != NO_LOCATION) { // Only if TrackPoint with valid alt
-        float delta = point.alt - prev.alt;
-        if (delta > 0) stats_.totalElevGain += delta;
-        else stats_.totalElevLoss -= delta;
-        if (point.alt > stats_.maxAltitude) stats_.maxAltitude = point.alt;
-        if (point.alt < stats_.minAltitude) stats_.minAltitude = point.alt;
-    }
-}
-
 void TrackLog::flush() {
-    if (buffer_.empty() || !strnlen(currentPath_, sizeof(currentPath_))) {
-        MAP_LOG("tracklog::flush miss-call %s", currentPath_);
+    if (!bufferPos_ || !strnlen(currentPath_, sizeof(currentPath_))) {
+        MAP_LOG("track::flush miss-call %s", currentPath_);
         return;
     }
-    fs::File f = SD.open(currentPath_, FILE_WRITE);
+    fs::File f = SD.open(currentPath_, "r+");
     if (!f) {
-        MAP_LOG("tracklog::flush err opening file %s", currentPath_);
+        MAP_LOG("track::flush err opening file %s", currentPath_);
         return;
     }
     uint32_t offset = _findTailOffset(f);
+    MAP_LOG("flush offset %d", offset);
+    if (offset == 0) {
+        MAP_LOG("track: invalid flush offset %d", offset);
+        return;
+    }
     f.seek(offset);
-    for (const auto& p : buffer_) {
-        _writePoint(f, p);
+    for (uint8_t i = 0; i < bufferPos_; i++) {
+        _writePoint(f, buffer_[i]);
+        buffer_[i] = TrackPoint(); //reset
     }
     _writeFooter(f);
     f.close();
-    MAP_LOG("flushed %d points to %s (%d points overall)", buffer_.size(), currentPath_, recordedPoints_);
-    buffer_.clear();
+    MAP_LOG("track: flushed %d points to %s (%d points overall)", bufferPos_, currentPath_, recordedPoints_);
+    bufferPos_ = 0;
     lastFlushTime_ = millis();
 }
 
@@ -194,12 +196,26 @@ uint32_t TrackLog::_findTailOffset(fs::File& f) {
     uint32_t sz = f.size();
     if (sz < GOBACK) return sz;
     f.seek(sz - GOBACK);
-    char buf[31] = {};
-    f.readBytes(buf, GOBACK);
+    char buf[GOBACK] = {};
+    f.readBytes(buf, GOBACK-1);
     char* p = strstr(buf, "</trkseg>");
     return p ? (sz - GOBACK + (p - buf)) : sz;
 }
 
+
+void TrackStats::update(const TrackPoint& point, const TrackPoint& prev) {
+    if (!point) {
+        return;
+    }
+    if (point.alt > maxAltitude) maxAltitude = point.alt;
+    if (point.alt < minAltitude) minAltitude = point.alt;
+    if (prev) {
+        totalDist += prev.approxDistTo(point);
+        float delta = point.alt - prev.alt;
+        if (delta > 0) totalElevGain += delta;
+        else totalElevLoss -= delta;
+    }
+}
 
 TrackLogViewer::TrackLogViewer(lv_obj_t* parent, uint32_t linecolor) {
     line = lv_line_create(parent);

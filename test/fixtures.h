@@ -9,6 +9,7 @@ std::string fmtstr(const char* fmt, ... );
 std::string basename(const std::string& path);
 std::string testname();
 std::string cwd();
+void printfile(const char* fn);
 
 void draw_lvgl_png(lv_disp_drv_t* drv, const char* path);
 

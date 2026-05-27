@@ -116,7 +116,7 @@ bool Controller::toggleRecording() {
         recordTrack_.stopRecording();
         return false;
     } else {
-        return recordTrack_.beginRecording(gps_.epoch());
+        return recordTrack_.recordResume(gps_.epoch());
     }
 }
 

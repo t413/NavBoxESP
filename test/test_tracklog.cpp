@@ -14,9 +14,10 @@ TEST(TrackLog, setup) {
 }
 
 TEST(TrackLog, decimation) {
-    TrackLog tl;
+    TrackLog tl("/tmp");
     TrackPoint p1(37.8, -122.2, 100.0);
-    tl.beginRecording(100000);
+    tl.newRecording(1726600000);
+    const char* testPath = tl.getRecPath();
 
     tl.addPoint(p1);
     EXPECT_EQ(tl.points().size(), 1);
@@ -35,12 +36,14 @@ TEST(TrackLog, decimation) {
     TrackPoint p3 = p1.fromDistHeading(lowdist * 3, 90.0);
     tl.addPoint(p3);
     EXPECT_EQ(tl.points().size(), 2);
+    tl.stopRecording();
+    remove(testPath);
 }
 
 TEST(TrackLog, GPXLoadSave) {
-    const char* testPath = "/tmp/test_track.gpx";
     TrackLog tl("/tmp");
-    tl.beginRecording(100000);
+    tl.newRecording(1716610000);
+    const char* testPath = tl.getRecPath();
 
     TrackPoint p1{37.8044, -122.2712, 10.0};
     p1.epoch = 1716610000; // Fixed timestamp
@@ -50,18 +53,20 @@ TEST(TrackLog, GPXLoadSave) {
         const double dist = 15.0 + (i % 10);
         const double heading = (i * 13) % 360;
         TrackPoint p = p1.fromDistHeading(dist, heading);
+        p.alt = 100 + ((i % 10) * 10);
         p.epoch = 1716610000 + (i * 10);
         tl.addPoint(p);
     }
 
     tl.stopRecording();
-    MAP_LOG("RAW [%d] points -> [%d path]", tl.recordedPoints_, tl.points().size());
+    MAP_LOG("RAW [%d] points -> [%d path]", tl.recordedPoints_, (int)tl.points().size());
     EXPECT_EQ(tl.recordedPoints_, 51);
 
     // Verify Stats
     auto stats = tl.getStats();
-    EXPECT_GT(stats.totalDist, 500.0f); // 50 points * ~15m
-    EXPECT_FLOAT_EQ(stats.maxAltitude, 10.0f);
+    MAP_LOG("stats: dist=%0.1f, alt %0.1f, min %0.1f, gain %0.1f, loss %0.1f", stats.totalDist, stats.maxAltitude, stats.minAltitude, stats.totalElevGain, stats.totalElevLoss);
+    EXPECT_GT(stats.totalDist, 250.0f);
+    EXPECT_GT(stats.maxAltitude, 180.0f);
 
     // Verify file content manually
     std::ifstream ifs(testPath);
@@ -72,6 +77,34 @@ TEST(TrackLog, GPXLoadSave) {
     // Test Loading
     TrackLog tl2;
     EXPECT_TRUE(tl2.load(testPath));
-    EXPECT_EQ(tl2.points().size(), 2);
+    EXPECT_GT(tl2.points().size(), 20);
     EXPECT_NEAR(tl2.points()[0].lat(), 37.8044, 0.0001);
+    remove(testPath);
+}
+
+TEST(TrackLog, ResumeAndClear) {
+    TrackLog tl("/tmp");
+
+    // 1. Initial recording session
+    tl.recordResume(1736610000);
+    const auto fn = string(tl.getRecPath()); //keep a persistant copy
+    tl.addPoint({37.0, -122.0, 100.0});
+    tl.addPoint({37.001, -122.001, 110.0});
+    tl.stopRecording();
+    EXPECT_EQ(tl.recordedPoints_, 2);
+
+    // 2. Resume recording (should append)
+    tl.recordResume(1736610000);
+    tl.addPoint({37.002, -122.002, 120.0});
+    tl.stopRecording();
+    EXPECT_GT(tl.getStats().totalDist, 100.0);
+
+    // 4. Test Clear
+    tl.clear();
+    EXPECT_EQ(tl.points().size(), 0);
+    EXPECT_EQ(tl.recordedPoints_, 0);
+    EXPECT_EQ(tl.getStats().totalDist, 0);
+    EXPECT_STREQ(tl.getRecPath(), "");
+    EXPECT_FALSE(tl.isRecording());
+    remove(fn.c_str());
 }

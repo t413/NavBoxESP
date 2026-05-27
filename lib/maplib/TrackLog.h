@@ -11,15 +11,17 @@ struct TrackStats {
     float totalDist;
     float totalElevGain, totalElevLoss;
     float maxAltitude, minAltitude;
+    void update(const TrackPoint& point, const TrackPoint& prev);
 };
 
 class TrackLog {
 public:
     TrackLog(const char* pathbase=nullptr) : pathbase_(pathbase) { }
     void clear();
-    size_t size() { return path_.size(); }
+    int size() { return (int) path_.size(); }
     bool load(const char* path);
-    bool beginRecording(uint32_t epoch);
+    bool newRecording(uint32_t epoch);
+    bool recordResume(uint32_t epoch);
     void stopRecording();
     bool addPoint(const TrackPoint& p);
     void flush();
@@ -31,7 +33,6 @@ public:
     const TrackStats& getStats() const { return stats_; }
 
 private:
-    void _updateStats(const TrackPoint& point, const TrackPoint& prev);
     void _writeHeader(fs::File& f);
     void _writePoint(fs::File& f, const TrackPoint& p);
     void _writeFooter(fs::File& f);
@@ -40,11 +41,14 @@ private:
     bool _openFile(const char* path, const char* mode, fs::File& f);
 
     std::vector<GeoPoint> path_; //whole sparse track
-    std::vector<TrackPoint> buffer_; //all raw points, written to GPX file
+    static constexpr uint8_t BUFF_SIZE = 10;
+    TrackPoint buffer_[BUFF_SIZE]; //all raw points, written to GPX file
+    uint8_t bufferPos_ = 0;
     TrackPoint lastPoint_;
     char currentPath_[64] = "";
     TrackStats stats_ = {0};
     bool isRecording_ = false;
+    bool isLoading_ = false;
     uint32_t lastFlushTime_ = 0;
     const char* pathbase_ = nullptr;
 public:
