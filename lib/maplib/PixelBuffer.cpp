@@ -52,10 +52,13 @@ static void png_close(void *h) { fs::File *f = (fs::File *)h; if (f) { f->close(
 static int32_t png_read(PNGFILE *h, uint8_t *b, int32_t l) { return static_cast<fs::File *>(h->fHandle)->read(b, l); }
 static int32_t png_seek(PNGFILE *h, int32_t p) { return static_cast<fs::File *>(h->fHandle)->seek(p); }
 
+constexpr uint16_t MAX_IMG_WIDTH = 256;
+
 // Context for sparse PNG decoding
 struct SparsePngContext {
     PixelBuffer* buffer;
     Bounds b;
+    uint16_t lineBuffer[MAX_IMG_WIDTH];
 };
 
 static int png_draw_sparse(PNGDRAW *p) {
@@ -66,9 +69,7 @@ static int png_draw_sparse(PNGDRAW *p) {
         return 1; // Continue decoding but skip this row
     }
 
-    // Decode the full line into a temporary buffer
-    uint16_t *lineBuffer = new uint16_t[_png.getWidth()];
-    _png.getLineAsRGB565(p, lineBuffer, PNG_RGB565_LITTLE_ENDIAN, 0);
+    _png.getLineAsRGB565(p, ctx->lineBuffer, PNG_RGB565_LITTLE_ENDIAN, 0);
 
     // Copy only the cropped portion
     coord_t srcStart = ctx->b ? ctx->b.left : 0;
@@ -80,12 +81,11 @@ static int png_draw_sparse(PNGDRAW *p) {
     if (dstY < ctx->buffer->height_) {
         std::memcpy(
             ctx->buffer->getPixelPtrAbs(0, dstY),
-            &lineBuffer[srcStart],
+            &ctx->lineBuffer[srcStart],
             copyWidth * sizeof(uint16_t)
         );
     }
 
-    delete[] lineBuffer;
     return 1; // Continue decoding
 }
 
@@ -98,9 +98,11 @@ bool PixelBuffer::loadImg(const char* path, const Bounds &b) {
 
     if (_png.open(path, png_open, png_close, png_read, png_seek, png_draw_sparse) != PNG_SUCCESS) return false;
 
-    // MAP_LOG("pxl::load %s opened (free: %u)", path, freeHeap());
-
     coord_t fw = _png.getWidth(), fh = _png.getHeight();
+    if (fw > MAX_IMG_WIDTH) {
+        MAP_LOG("pxl::load img w (%d) too large (%d max)", fw, MAX_IMG_WIDTH);
+        return false;
+    }
     coord_t aw = fw, ah = fh;
 
     if (ctx.b) {
