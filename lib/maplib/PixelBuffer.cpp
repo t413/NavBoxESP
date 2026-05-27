@@ -121,6 +121,7 @@ bool PixelBuffer::loadImg(const char* path, const Bounds &b) {
         return false;
     }
 
+    uncroppedW_ = fw, uncroppedH_ = fh;
     int rc = _png.decode(&ctx, 0);
     _png.close();
 

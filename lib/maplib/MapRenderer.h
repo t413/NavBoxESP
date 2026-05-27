@@ -11,7 +11,8 @@ class TrackLog;
 struct TrackLogViewer;
 constexpr double DEFAULT_LAT = 37.8044;
 constexpr double DEFAULT_LON = -122.2712;
-constexpr int ZOOM_UNCHANGED = -1;
+typedef int8_t zoom_t;
+constexpr zoom_t ZOOM_UNCHANGED = -1;
 
 class MapRenderer {
 public:
@@ -23,7 +24,7 @@ public:
         int onscreen = 0; //set while iterating over tiles
         bool is(int ox, int oy, int oz) const { return ox == x && oy == y && oz == z; }
         const PixelBuffer* load(int ox, int oy, int oz, const char* fmt, const Bounds &);
-        void update(int px, int py, bool visible);
+        void update(int px, int py, bool visible, int8_t magnification = 1);
         void clear();
     };
     static constexpr uint8_t TILECACHE_SIZE = 4;
@@ -38,14 +39,16 @@ public:
     bool project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
     bool isVisible(lv_coord_t px, lv_coord_t py) const;
 
-    void setCenter(const GeoPoint &, int zoom = ZOOM_UNCHANGED); ///Sets the map's center view
-    void setZoom(int z);
+    void setCenter(const GeoPoint &, zoom_t zoom = ZOOM_UNCHANGED); ///Sets the map's center view
+    void setZoom(zoom_t zoom, zoom_t magnification = 1);
     void panPx(int dx, int dy);
     void setDot(double lat, double lon);
     void setHome(double lat, double lon);
     void setTracks(TrackLog* record, TrackLog* view);
 
-    int   zoom() const { return zoom_; }
+    zoom_t zoom() const { return zoom_; }
+    zoom_t magnification() const { return magnification_; }
+    uint16_t scaledTileSize() const { return tileSize_ * magnification_; }
     double lat() const { return mapCenter_.lat(); }
     double lon() const { return mapCenter_.lon(); }
     const GeoPoint& getCenter() const { return mapCenter_; }
@@ -59,7 +62,8 @@ private:
     uint16_t width_ = 0, height_ = 0;
     uint16_t       tileSize_;
     const char*    pathPattern_ = nullptr;
-    int            zoom_ = 12;
+    zoom_t         zoom_ = 12;
+    zoom_t         magnification_ = 1;
     TileCacheEntry cache_[TILECACHE_SIZE];
     uint32_t       renderCount_ = 0;
     lv_obj_t*      posDot_ = nullptr;

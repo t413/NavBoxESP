@@ -32,8 +32,9 @@ public:
     int getOffsetY() const { return offsetY_; }
     bool isSparse() const { return offsetX_ != 0 || offsetY_ != 0; }
 
-    pixel_t* data_; // RGB565 data for LVGL compatibility
-    coord_t width_, height_;
+    pixel_t* data_ = nullptr; // RGB565 data for LVGL compatibility
+    coord_t uncroppedW_ = 0, uncroppedH_ = 0;
+    coord_t width_ = 0, height_ = 0;
 
 private:
     int offsetX_, offsetY_;  // Offset within original image for sparse buffers
