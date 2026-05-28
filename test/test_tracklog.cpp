@@ -118,5 +118,5 @@ TEST(TrackLog, simplify) {
         {37.00001, -122.00001},  // very close, should cull
         {37.0001, -122.0001},
     };
-    TrackLog::simplifyRadial(testPath, 10.0f); // keep only if >10m from neighbors
+    TrackLog::simplifyRadial(testPath, 10.0f, 1000.0f); // keep only if >10m from neighbors
 }

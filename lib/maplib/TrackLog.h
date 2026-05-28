@@ -32,9 +32,9 @@ public:
     GeoPoint calcCenter() const;
     const TrackStats& getStats() const { return stats_; }
 
-    static bool shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdMeters);
-    static uint16_t simplifyRadial(std::vector<GeoPoint>& path, float thresholdMeters);
-    uint16_t simplify(float thresholdMeters = 2.0);
+    static bool shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdM, float keepRadiusM);
+    static uint16_t simplifyRadial(std::vector<GeoPoint>& path, float thresholdM, float keepRadiusM);
+    uint16_t simplify(float thresholdM = 2.0f, float keepRadiusM = 100.0f);
 
 private:
     void _writeHeader(fs::File& f);

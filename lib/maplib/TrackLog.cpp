@@ -194,29 +194,30 @@ void TrackLog::_writeFooter(fs::File& f) {
     f.println("</trkseg></trk></gpx>");
 }
 
-bool TrackLog::shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdMeters) {
+bool TrackLog::shouldKeepPoint(size_t idx, const std::vector<GeoPoint>& path, float thresholdM, float keepRadiusM) {
     if (idx == 0 || idx == path.size() - 1) return true; // always keep endpoints
     const auto& prev = path[idx - 1];
     const auto& curr = path[idx];
     const auto& next = path[idx + 1];
     if (!prev || !curr || !next) return true; // Skip if neighbors are invalid
+    if (keepRadiusM > 0 && curr.distTo(prev) > keepRadiusM) return true;
     double dist = curr.lineDist(prev, next);
-    return dist > thresholdMeters;
+    return dist > thresholdM;
 }
 
-uint16_t TrackLog::simplifyRadial(std::vector<GeoPoint>& path, float thresholdMeters) {
+uint16_t TrackLog::simplifyRadial(std::vector<GeoPoint>& path, float thresholdM, float keepRadiusM) {
     if (path.empty()) return 0;
     auto startsz = (uint16_t)path.size();
     // cull points
     for (size_t i = 1; i < path.size() - 1; ++i) {
-        if (!shouldKeepPoint(i, path, thresholdMeters)) {
+        if (!shouldKeepPoint(i, path, thresholdM, keepRadiusM)) {
             path[i] = GeoPoint(); // invalidate
         }
     }
     // Compact in-place: move valid points to front
     size_t writeIdx = 0;
     for (size_t readIdx = 0; readIdx < path.size(); ++readIdx) {
-        if (path[readIdx]) { // operator bool() checks NO_LOCATION
+        if (path[readIdx] || readIdx == 0 || readIdx == path.size() - 1) {
             path[writeIdx++] = path[readIdx];
         }
     }
@@ -225,8 +226,8 @@ uint16_t TrackLog::simplifyRadial(std::vector<GeoPoint>& path, float thresholdMe
     return (uint16_t) writeIdx;
 }
 
-uint16_t TrackLog::simplify(float thresholdMeters) {
-    return simplifyRadial(path_, thresholdMeters);
+uint16_t TrackLog::simplify(float thresholdM, float keepRadiusM) {
+    return simplifyRadial(path_, thresholdM, keepRadiusM);
 }
 
 uint32_t TrackLog::_findTailOffset(fs::File& f) {
