@@ -1,7 +1,9 @@
 #include "MapRenderer.h"
 #include "log.h"
 #include "TrackLog.h"
+#include "MapLayer.h"
 #include "fileclass.h"
+#include <lvgl.h>
 
 const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, const Bounds& bounds) {
     char path[128];
@@ -45,8 +47,16 @@ void MapRenderer::TileCacheEntry::clear() {
 }
 
 MapRenderer::~MapRenderer() {
-    if (recordViewer_) delete recordViewer_;
-    if (viewViewer_) delete viewViewer_;
+    for (auto& t : cache_)
+        t.buffer.clear();
+    for (auto& layer : layers_) {
+        if (layer == markerLayer_) markerLayer_ = nullptr;
+        delete layer;
+        layer = nullptr;
+    }
+    if (obj_) lv_obj_del(obj_);  // Parent container
+    obj_ = nullptr;
+    MAP_LOG("~MapRenderer done");
 }
 
 bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize) {
@@ -77,29 +87,6 @@ bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fm
         lv_img_set_pivot(cache_[i].img_obj, 0, 0);
         lv_obj_add_flag(cache_[i].img_obj, LV_OBJ_FLAG_HIDDEN);
     }
-
-    recordViewer_ = new TrackLogViewer(obj_, colAccent_);
-    viewViewer_ = new TrackLogViewer(obj_, 0xFF7B72);
-
-    // Initialize standard LVGL objects for markers
-    homeMarker_ = lv_obj_create(obj_);
-    lv_obj_set_size(homeMarker_, homesize_, homesize_);
-    lv_obj_set_style_radius(homeMarker_, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(homeMarker_, lv_color_hex(colHome_), 0);
-    lv_obj_set_style_border_color(homeMarker_, lv_color_white(), 0);
-    lv_obj_set_style_border_width(homeMarker_, 2, 0);
-    lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
-    lv_obj_t* label = lv_label_create(homeMarker_);
-    lv_label_set_text(label, "H");
-    lv_obj_center(label);
-
-    posDot_ = lv_obj_create(obj_);
-    lv_obj_set_size(posDot_, dotsize_, dotsize_);
-    lv_obj_set_style_radius(posDot_, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(posDot_, lv_color_hex(colAccent_), 0);
-    lv_obj_set_style_border_color(posDot_, lv_color_white(), 0);
-    lv_obj_set_style_border_width(posDot_, 2, 0);
-    lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
     return true;
 }
 
@@ -114,12 +101,6 @@ void MapRenderer::invalidate() {
     _updateTiles();
 }
 
-void MapRenderer::setTracks(TrackLog* record, TrackLog* view) {
-    recordTrack_ = record;
-    viewTrack_ = view;
-    _updateTracks();
-}
-
 bool MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const {
     const uint16_t sts = scaledTileSize();
     double tx, ty, cx, cy;
@@ -132,15 +113,6 @@ bool MapRenderer::project(double lat, double lon, lv_coord_t& px, lv_coord_t& py
 
 bool MapRenderer::isVisible(lv_coord_t px, lv_coord_t py) const {
     return px >= 0 && px < width_ && py >= 0 && py < height_;
-}
-
-void MapRenderer::setDot(double lat, double lon) {
-    dot_ = {lat, lon};
-    _updateMarkers();
-}
-void MapRenderer::setHome(double lat, double lon) {
-    home_ = {lat, lon};
-    _updateMarkers();
 }
 
 void MapRenderer::setCenter(const GeoPoint& p, zoom_t zoom) {
@@ -173,6 +145,7 @@ zoom_t MapRenderer::findBestZoomWithTiles(const GeoPoint &cntr, zoom_t start) {
         MAP_LOG("find zoom %s -> %d", path, has);
         if (has) { return z; } //found
     }
+    return start;
 }
 
 void MapRenderer::panPx(int dx, int dy) {
@@ -182,26 +155,39 @@ void MapRenderer::panPx(int dx, int dy) {
     setCenter({_tileYToLat(ty, zoom_), mapCenter_.lon() + dx / totalPx * 360.0});
 }
 
-// Private update methods
 
-void MapRenderer::_updateTracks() {
-    if (recordViewer_) recordViewer_->update(this, recordTrack_);
-    if (viewViewer_) viewViewer_->update(this, viewTrack_);
+void MapRenderer::addLayer(MapLayer* layer) {
+    layers_.push_back(layer);
 }
 
-void MapRenderer::_updateMarkers() {
-    if (!posDot_ || !homeMarker_) return;
-    lv_coord_t px = -1, py = -1;
+void MapRenderer::removeLayer(MapLayer* layer) {
+    layers_.erase(std::remove_if(layers_.begin(), layers_.end(),
+        [layer](MapLayer* ptr) { return ptr == layer; }), layers_.end());
+    if (markerLayer_ == layer) markerLayer_ = nullptr;
+}
 
-    if (dot_ && project(dot_.lat(), dot_.lon(), px, py)) {
-        lv_obj_clear_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(posDot_, px - dotsize_ / 2, py - dotsize_ / 2);
-    } else lv_obj_add_flag(posDot_, LV_OBJ_FLAG_HIDDEN);
+void MapRenderer::setLayerVisible(MapLayer* layer, bool visible) {
+    if (layer) layer->setVisible(visible);
+}
 
-    if (home_ && project(home_.lat(), home_.lon(), px, py)) {
-        lv_obj_clear_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_set_pos(homeMarker_, px - homesize_ / 2, py - homesize_ / 2);
-    } else lv_obj_add_flag(homeMarker_, LV_OBJ_FLAG_HIDDEN);
+Marker* MapRenderer::addMarker(const Marker& m) {
+    if (!markerLayer_) {
+        markerLayer_ = new MarkerLayer(obj_);
+        addLayer(markerLayer_);
+    }
+    auto ret = markerLayer_->addMarker(m);
+    if (markerLayer_->isVisible())
+        markerLayer_->update(this);
+    return ret;
+}
+
+
+// Private update methods
+
+void MapRenderer::_updateLayers() {
+    for (auto& layer : layers_) {
+        if (layer->isVisible()) layer->update(this);
+    }
 }
 
 void MapRenderer::_updateTiles() {
@@ -268,8 +254,7 @@ void MapRenderer::_updateTiles() {
         if (!cache_[j].onscreen)
             cache_[j].update(0, 0, false);
 
-    _updateMarkers();
-    _updateTracks();
+    _updateLayers();
 }
 
 // Static geo math

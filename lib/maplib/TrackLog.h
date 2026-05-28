@@ -62,15 +62,3 @@ public:
     uint32_t maxRawUnFlush_ = 15000; //ms
 };
 
-class MapRenderer;
-struct _lv_obj_t;
-#include <misc/lv_area.h>
-
-struct TrackLogViewer {
-    _lv_obj_t* line = nullptr;
-    lv_point_t lvPoints[25];
-    uint16_t pointCount = 0;
-
-    TrackLogViewer(_lv_obj_t* parent, uint32_t linecolor);
-    void update(MapRenderer*, TrackLog*);
-};

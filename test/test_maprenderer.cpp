@@ -2,6 +2,7 @@
 #include "fixtures.h"
 #include <log.h>
 #include <MapRenderer.h>
+#include <MapLayer.h>
 
 using namespace std;
 using namespace fixtures;
@@ -106,8 +107,8 @@ TEST(MapRenderer, RealMapPositionRender) {
     EXPECT_TRUE(ret);
 
     map.setCenter({37.87, -122.32}, 16); //CCP at zoom 16
-    map.setDot(37.87037,-122.32285); //37.87255,-122.32037
-    map.setHome(37.87125,-122.31767);
+    auto dot  = map.addMarker({ .pos={37.87050,-122.32000} });
+    auto home = map.addMarker({ .pos={37.87125,-122.31767}, .color=0x00ff00, .label='H' });
     int saveidx = 0;
     auto drawsave = [&env,&map,&saveidx](string extra="") {
         env.draw(); //do a full lvgl render
@@ -119,7 +120,7 @@ TEST(MapRenderer, RealMapPositionRender) {
     drawsave();
 
     MAP_LOG("SETTING DOT");
-    map.setDot(37.8705,-122.320); //move dot closer-in
+    dot->pos = {37.8705,-122.320};
     MAP_LOG("SETTING DOT DONE");
     map.invalidate();
     drawsave();
