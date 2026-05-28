@@ -37,6 +37,7 @@ public:
     uint16_t add(const Marker& m);
     bool updatePoint(uint16_t id, const GeoPoint &);
     const Marker& get(uint16_t id) const;
+    const MarkObj& findObj(uint16_t id) const;
     void remove(uint16_t id);
 
     void update() override;

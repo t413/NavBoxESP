@@ -142,7 +142,7 @@ zoom_t MapRenderer::findBestZoomWithTiles(const GeoPoint &cntr, zoom_t start) {
     return start;
 }
 
-void MapRenderer::panPx(int dx, int dy) {
+void MapRenderer::panPx(int16_t dx, int16_t dy) {
     const uint16_t sts   = scaledTileSize(); //already accounts for magnification
     const double totalPx = (double)sts * pow(2.0, zoom_); // total world width in screen-pixels
     double ty = _latToTileY(mapCenter_.lat(), zoom_) + (double)dy / sts;
@@ -164,6 +164,23 @@ MarkerLayer* MapRenderer::getMarkerLayer() {
     if (!markerLayer_)
         addLayer( (markerLayer_ = new MarkerLayer(this)) );
     return markerLayer_;
+}
+
+MapRenderer::XY MapRenderer::getMarkerPx(uint16_t id) const {
+    if (!markerLayer_) return XY{-1,-1};
+    const auto& mo = markerLayer_->findObj(id);
+    if (!mo.obj_ || lv_obj_has_flag(mo.obj_, LV_OBJ_FLAG_HIDDEN))
+        return XY{-1, -1};
+    return XY{
+        (int16_t)(lv_obj_get_x(mo.obj_) + mo.m_.size / 2),
+        (int16_t)(lv_obj_get_y(mo.obj_) + mo.m_.size / 2)
+    };
+}
+
+int16_t MapRenderer::getPxDistToCenter(const MapRenderer::XY &pos) const {
+    int16_t dx = pos.x - (int16_t)(width_ / 2);
+    int16_t dy = pos.y - (int16_t)(height_ / 2);
+    return (int16_t)sqrt(dx * dx + dy * dy);
 }
 
 

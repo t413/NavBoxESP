@@ -42,11 +42,13 @@ bool MarkerLayer::updatePoint(uint16_t id, const GeoPoint &gp) {
 
 const MarkerLayer::MarkObj MarkerLayer::empty = MarkObj();
 
-const Marker& MarkerLayer::get(uint16_t id) const {
+const Marker& MarkerLayer::get(uint16_t id) const { return findObj(id).m_; }
+
+const MarkerLayer::MarkObj& MarkerLayer::findObj(uint16_t id) const {
     for (const auto& m : markers_)
         if (m.id == id)
-            return m.m_;
-    return MarkerLayer::empty.m_;
+            return m;
+    return MarkerLayer::empty;
 }
 
 void MarkerLayer::remove(uint16_t id) {

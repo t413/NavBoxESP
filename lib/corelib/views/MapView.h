@@ -33,6 +33,7 @@ private:
     TrackLayer* viewTrackLayer_ = nullptr;
     bool followMode_ = true;
     bool isActive_ = false;
+    uint32_t lastForceRedraw_ = 0;
 
     // Sidebar UI elements
     _lv_obj_t* sidebar_ = nullptr;

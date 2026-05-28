@@ -38,6 +38,7 @@ void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     dotMarkerId_ = lyr.add(Marker({}, map_.dotsize_, map_.colAccent_)); //second to be on top
 
     _updateSidebar();
+    map_.invalidate();
 }
 
 void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = true; }
@@ -48,8 +49,12 @@ MarkerLayer& MapView::markerLayer() {
 }
 
 void MapView::iterate(bool inview) {
-    // MapRenderer handles its own layer updates via invalidate() or _updateLayers()
+    isActive_ = inview;
+    //map_ updates handled by key events or GPS point updates
 }
+
+static constexpr int16_t CROP_RECENTER_DIST = 14;
+static constexpr uint32_t CROP_FORCE_REDRAW_MS = 2000;
 
 void MapView::onGPSUpdate(GpsManager* gps) {
     if (!gps) return;
@@ -57,19 +62,29 @@ void MapView::onGPSUpdate(GpsManager* gps) {
     auto point = gps->toPoint();
     _updateSidebar(&point);
     markerLayer().updatePoint(dotMarkerId_, point);
+    if (!isActive_) {
+        MAP_LOG("mapview:redraw skip, inactive");
+        return;
+    }
 
     if (followMode_ && gps->hasFix()) {
-        bool needsCenter = true;
+        bool needsCenter = !map_.cropmode_; //cropmode needs infrequent centering
         if (map_.cropmode_) {
-            lv_coord_t px, py;
-            if (map_.project(point.lat(), point.lon(), px, py)) {
-                needsCenter = false;
+            uint32_t now = millis();
+            if ((now - lastForceRedraw_) > CROP_FORCE_REDRAW_MS) { //limit tile loading
+                auto pos = map_.getMarkerPx(dotMarkerId_);
+                int16_t px = (pos.x != -1)? map_.getPxDistToCenter(pos) : 1000;
+                if (px >= CROP_RECENTER_DIST) {
+                    MAP_LOG("mapview:redraw %d px", px);
+                    needsCenter = true;
+                    lastForceRedraw_ = now;
+                }
             }
         }
 
         if (needsCenter) {
             map_.setCenter(point);
-        }
+        } else map_._updateLayers(); //just update markers/track
     }
 }
 
@@ -186,8 +201,8 @@ void MapView::_updateSidebar(const TrackPoint* point) {
     lv_label_set_text(altLabel_, buf);
 
     // Distance to marked home
-    if (fixed && homeMarkerId_ && point) {
-        auto homepoint = markerLayer().get(homeMarkerId_).pos;
+    auto homepoint = homeMarkerId_? markerLayer().get(homeMarkerId_).pos : GeoPoint();
+    if (fixed && homepoint && point) {
         float d = homepoint.approxDistTo(*point);
         if (d > 1000.0f) snprintf(buf, 16, "%.1fkm", d / 1000.0f);
         else snprintf(buf, 16, "%.0fm", d);

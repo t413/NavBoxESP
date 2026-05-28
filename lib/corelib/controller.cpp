@@ -60,7 +60,7 @@ void Controller::iterate(uint32_t now) {
     // 3. Update all views
     for (uint8_t i = 0; i < (uint8_t)ViewID::COUNT; i++) {
         if (!views_[i]) continue;
-        views_[i]->iterate(i == (uint8_t)currentView_);
+        views_[i]->iterate(i == (uint8_t)currentView_ && !sleeping_);
     }
 }
 

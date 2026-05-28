@@ -34,6 +34,7 @@ public:
         void clear();
     };
     static constexpr uint8_t TILECACHE_SIZE = 4;
+    struct XY { int16_t x, y; };
 
     MapRenderer() = default;
     ~MapRenderer();
@@ -48,7 +49,9 @@ public:
 
     void setCenter(const GeoPoint &, zoom_t zoom = ZOOM_UNCHANGED); ///Sets the map's center view
     void setZoom(zoom_t zoom, zoom_t magnification = MAGNF_AUTO);
-    void panPx(int dx, int dy);
+    void panPx(int16_t dx, int16_t dy);
+    XY getMarkerPx(uint16_t id) const;
+    int16_t getPxDistToCenter(const XY &) const;
 
     zoom_t zoom() const { return zoom_; }
     zoom_t zoomtotal() const { return zoom_ + magnification_ - 1; }
