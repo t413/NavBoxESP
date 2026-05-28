@@ -1,6 +1,7 @@
 #include "MapRenderer.h"
 #include "log.h"
 #include "TrackLog.h"
+#include "fileclass.h"
 
 const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, const Bounds& bounds) {
     char path[128];
@@ -149,11 +150,29 @@ void MapRenderer::setCenter(const GeoPoint& p, zoom_t zoom) {
 }
 
 void MapRenderer::setZoom(zoom_t zoom, zoom_t magnification) {
+    if (magnification == MAGNF_AUTO) {
+        zoom_ = findBestZoomWithTiles(mapCenter_, zoom);
+        magnification = zoom - zoom_ + 1;
+        zoom = zoom_;
+    }
     if (zoom != ZOOM_UNCHANGED)
         zoom_          = (zoom > 20) ? 20 : zoom;
     magnification_ = (magnification < 1) ? 1 : magnification;
     MAP_LOG("setZoom z%d mag%d (scaledTile=%d)", zoom_, magnification_, scaledTileSize());
     invalidate();
+}
+
+zoom_t MapRenderer::findBestZoomWithTiles(const GeoPoint &cntr, zoom_t start) {
+    //zoom out until finding tiles for this zoom level
+    char path[128];
+    for (zoom_t z = start; z > 0; z--) {
+        double tx, ty;
+        _latLonToTileF(cntr.lat(), cntr.lon(), z, tx, ty);
+        snprintf(path, sizeof(path), pathPattern_, z, (int)tx, (int)ty);
+        bool has = SD.exists(path);
+        MAP_LOG("find zoom %s -> %d", path, has);
+        if (has) { return z; } //found
+    }
 }
 
 void MapRenderer::panPx(int dx, int dy) {

@@ -13,6 +13,7 @@ constexpr double DEFAULT_LAT = 37.8044;
 constexpr double DEFAULT_LON = -122.2712;
 typedef int8_t zoom_t;
 constexpr zoom_t ZOOM_UNCHANGED = -1;
+constexpr int8_t MAGNF_AUTO = -1;
 
 class MapRenderer {
 public:
@@ -38,15 +39,17 @@ public:
 
     bool project(double lat, double lon, lv_coord_t& px, lv_coord_t& py) const; /// get display px position of a lat/lon point
     bool isVisible(lv_coord_t px, lv_coord_t py) const;
+    zoom_t findBestZoomWithTiles(const GeoPoint &, zoom_t);
 
     void setCenter(const GeoPoint &, zoom_t zoom = ZOOM_UNCHANGED); ///Sets the map's center view
-    void setZoom(zoom_t zoom, zoom_t magnification = 1);
+    void setZoom(zoom_t zoom, zoom_t magnification = MAGNF_AUTO);
     void panPx(int dx, int dy);
     void setDot(double lat, double lon);
     void setHome(double lat, double lon);
     void setTracks(TrackLog* record, TrackLog* view);
 
     zoom_t zoom() const { return zoom_; }
+    zoom_t zoomtotal() const { return zoom_ + magnification_ - 1; }
     zoom_t magnification() const { return magnification_; }
     uint16_t scaledTileSize() const { return tileSize_ * magnification_; }
     double lat() const { return mapCenter_.lat(); }

@@ -72,8 +72,8 @@ void MapView::onKey(uint8_t key) {
             map_.panPx(-20, 0); followMode_ = false; break;
         case ctrlbtns::KEY_ARROW_RIGHT:
             map_.panPx(20, 0);  followMode_ = false; break;
-        case '[': map_.setZoom(map_.zoom() - 1); break;
-        case ']': map_.setZoom(map_.zoom() + 1); break;
+        case '[': map_.setZoom(map_.zoomtotal() - 1); break;
+        case ']': map_.setZoom(map_.zoomtotal() + 1); break;
         case 'f':
             followMode_ = true;
             if (gps_ && gps_->hasFix())

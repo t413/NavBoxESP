@@ -132,4 +132,16 @@ TEST(MapRenderer, RealMapPositionRender) {
 
     map.setZoom(14, 3); //zoomed out, maginified-in
     drawsave();
- }
+
+    auto zoom = map.findBestZoomWithTiles(map.getCenter(), 30);
+    MAP_LOG("found findBestZoomWithTiles -> %d", zoom);
+
+    map.setZoom(20); //auto zoom!
+    drawsave("autozoom");
+
+    for (zoom_t z = 20; z > 5; z--) {
+        map.setZoom(z);
+        MAP_LOG("zoom z%d -> %d (%d)", z, map.zoom(), map.magnification());
+    }
+    // exit(1);
+}
