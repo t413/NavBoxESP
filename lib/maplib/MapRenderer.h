@@ -62,8 +62,7 @@ public:
 
     void addLayer(MapLayer* layer);
     void removeLayer(MapLayer* layer);
-    void setLayerVisible(MapLayer* layer, bool visible);
-    Marker* addMarker(const Marker& m);
+    MarkerLayer* getMarkerLayer();
 
 protected:
     _lv_obj_t* obj_ = nullptr;
@@ -93,6 +92,7 @@ public: //utility methods, helpful to unit test
     int _findSlot();
     void _updateTiles();
     void _updateLayers();
+    _lv_obj_t* getLvglBase() const { return obj_; }
 };
 
 int freeHeap();

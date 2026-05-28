@@ -185,7 +185,7 @@ void TrackLog::_writeHeader(fs::File& f) {
 }
 
 void TrackLog::_writePoint(fs::File& f, const TrackPoint& p) {
-    char isoTime[24];
+    char isoTime[24] = "";
     _epochToIso(p.epoch, isoTime, sizeof(isoTime));
     f.printf("  <trkpt lat=\"%.7f\" lon=\"%.7f\"><ele>%.1f</ele><time>%s</time></trkpt>\n", p.lat(), p.lon(), p.alt, isoTime);
 }

@@ -3,14 +3,18 @@
 #include <log.h>
 #include <MapRenderer.h>
 #include <MapLayer.h>
+#include <TrackLog.h>
 
 using namespace std;
 using namespace fixtures;
 
-constexpr string TILE_FMT = "/tmp/%d/%d/%d.png";
+constexpr string TILE_FMT_END = "/%d/%d/%d.png";
+constexpr string TILE_FMT = "/tmp" + TILE_FMT_END;
 constexpr int TEST_Z = 10;
 constexpr int TEST_X = 512;
 constexpr int TEST_Y = 512;
+
+std::filesystem::path OSM_TILES_STASH = "/Users/timo/Documents/t4ds/static/ext/tiles"; //TODO .. download tiles here?
 
 std::string tilePath(int z, int x, int y) {
     return fmtstr(TILE_FMT.c_str(), z, x, y);
@@ -95,20 +99,19 @@ TEST(MapRenderer, PanLogic) {
 TEST(MapRenderer, RealMapPositionRender) {
     fixtures::LvglTestEnv env(300, 200);
     MapRenderer map;
-    map.cropmode_ = true;
-    const char* TILES_FMT = "/%d/%d/%d.png";
-    std::filesystem::path tilesdir = "/Users/timo/Documents/t4ds/static/ext/tiles";
-    if (!filesystem::is_directory(tilesdir)) {
+    // map.cropmode_ = true;
+    if (!filesystem::is_directory(OSM_TILES_STASH)) {
         MAP_LOG("WARNING CAN'T RUN TEST WITHOUT TILES");
         return;
     }
-    string tfmt = string(tilesdir) + string(TILES_FMT);
+    string tfmt = string(OSM_TILES_STASH) + TILE_FMT_END;
     auto ret = map.begin(env.base_, env.width_, env.height_, tfmt.c_str());
     EXPECT_TRUE(ret);
 
     map.setCenter({37.87, -122.32}, 16); //CCP at zoom 16
-    auto dot  = map.addMarker({ .pos={37.87050,-122.32000} });
-    auto home = map.addMarker({ .pos={37.87125,-122.31767}, .color=0x00ff00, .label='H' });
+    auto mkrs = map.getMarkerLayer();
+    auto dotidx  = mkrs->add(Marker({37.87050,-122.32000}, 15));
+    auto homeidx = mkrs->add(Marker({37.87125,-122.31767}, 14, 0x00ff00, 'H' ));
     int saveidx = 0;
     auto drawsave = [&env,&map,&saveidx](string extra="") {
         env.draw(); //do a full lvgl render
@@ -120,8 +123,8 @@ TEST(MapRenderer, RealMapPositionRender) {
     drawsave();
 
     MAP_LOG("SETTING DOT");
-    dot->pos = {37.8705,-122.320};
-    MAP_LOG("SETTING DOT DONE");
+    map.getMarkerLayer()->updatePoint(dotidx, {37.8705,-122.320});
+    MAP_LOG("SET DOT DONE");
     map.invalidate();
     drawsave();
 
@@ -145,4 +148,40 @@ TEST(MapRenderer, RealMapPositionRender) {
         MAP_LOG("zoom z%d -> %d (%d)", z, map.zoom(), map.magnification());
     }
     // exit(1);
+}
+
+TEST(MapRenderer, TrackLayerCircle) {
+    fixtures::LvglTestEnv env(300, 200);
+    TrackPoint center(37.87, -122.32);
+
+    MapRenderer map;
+    string tfmt = string(OSM_TILES_STASH) + TILE_FMT_END;
+    map.begin(env.base_, env.width_, env.height_, tfmt.c_str());
+
+    TrackLog track("/tmp");
+    TrackLayer tl(&map, 0xFF0000, &track);
+    map.addLayer(&tl);
+
+    auto& mkrs = *(map.getMarkerLayer());
+    auto dotidx  = mkrs.add(Marker(center, 16));
+    auto homeidx = mkrs.add(Marker(center, 18, 0x00ff00, 'H' ));
+
+    track.newRecording(1936610000);
+    const char* testPath = track.getRecPath();
+
+    //make a spiral
+    for (int i = 0; i <= 360*2; i += 10) {
+        auto p = center.fromDistHeading(180.0 - i/5, (double)i);
+        track.addPoint(p);
+        if (i==20) mkrs.updatePoint(dotidx, p);
+    }
+    track.stopRecording();
+    MAP_LOG("rec %d kept %d", track.recordedPoints_, (int) track.points().size());
+
+    map.setCenter(center, 16); //CCP at zoom 16. also redraws layers
+    env.draw();
+    env.save("_trackcircle");
+
+    map.removeLayer(&tl);
+    remove(testPath);
 }

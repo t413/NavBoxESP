@@ -8,7 +8,6 @@
 const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, const char* fmt, const Bounds& bounds) {
     char path[128];
     snprintf(path, sizeof(path), fmt, oz, ox, oy);
-    MAP_LOG("tile::load trying %s (free: %u)", path, freeHeap());
     if (buffer.loadImg(path, bounds)) {
         z = oz, x = ox, y = oy, onscreen = 0;
         dsc_.header.always_zero = 0;
@@ -17,19 +16,15 @@ const PixelBuffer* MapRenderer::TileCacheEntry::load(int ox, int oy, int oz, con
         dsc_.data_size = buffer.width_ * buffer.height_ * sizeof(uint16_t);
         dsc_.header.cf = LV_IMG_CF_TRUE_COLOR;
         dsc_.data = (const uint8_t*)buffer.data_;
-        MAP_LOG("tile::load found %s", path);
         return &buffer;
-    }
-    MAP_LOG("tile::load missing %s", path);
+    } else MAP_LOG("tile::load failed loading %s (free: %u)", path, freeHeap());
     return nullptr;
 }
 
 void MapRenderer::TileCacheEntry::update(int px, int py, bool visible, zoom_t magnification) {
     if (visible) {
-        // Scale offset by magnification so cropped tiles still land correctly.
         lv_coord_t adjustedX = px + (lv_coord_t)(buffer.getOffsetX() * magnification);
         lv_coord_t adjustedY = py + (lv_coord_t)(buffer.getOffsetY() * magnification);
-        MAP_LOG("tile set pos [%d, %d] -> [%d, %d] mag %d", x, y, adjustedX, adjustedY, magnification);
         lv_img_set_pivot(img_obj, 0, 0);
         lv_img_set_zoom(img_obj, (uint16_t)(magnification * buffer.uncroppedW_)); //TODO allow fractional zoom
         lv_obj_set_pos(img_obj, adjustedX, adjustedY);
@@ -56,7 +51,6 @@ MapRenderer::~MapRenderer() {
     }
     if (obj_) lv_obj_del(obj_);  // Parent container
     obj_ = nullptr;
-    MAP_LOG("~MapRenderer done");
 }
 
 bool MapRenderer::begin(lv_obj_t* parent, uint16_t w, uint16_t h, const char* fmt, uint16_t tileSize) {
@@ -166,19 +160,10 @@ void MapRenderer::removeLayer(MapLayer* layer) {
     if (markerLayer_ == layer) markerLayer_ = nullptr;
 }
 
-void MapRenderer::setLayerVisible(MapLayer* layer, bool visible) {
-    if (layer) layer->setVisible(visible);
-}
-
-Marker* MapRenderer::addMarker(const Marker& m) {
-    if (!markerLayer_) {
-        markerLayer_ = new MarkerLayer(obj_);
-        addLayer(markerLayer_);
-    }
-    auto ret = markerLayer_->addMarker(m);
-    if (markerLayer_->isVisible())
-        markerLayer_->update(this);
-    return ret;
+MarkerLayer* MapRenderer::getMarkerLayer() {
+    if (!markerLayer_)
+        addLayer( (markerLayer_ = new MarkerLayer(this)) );
+    return markerLayer_;
 }
 
 
@@ -186,7 +171,7 @@ Marker* MapRenderer::addMarker(const Marker& m) {
 
 void MapRenderer::_updateLayers() {
     for (auto& layer : layers_) {
-        if (layer->isVisible()) layer->update(this);
+        layer->update();
     }
 }
 
@@ -243,7 +228,6 @@ void MapRenderer::_updateTiles() {
             if (tile.load(m.x, m.y, zoom_, pathPattern_, crop)) {
                 lv_img_set_src(tile.img_obj, &tile.dsc_);
                 tile.update(m.tx, m.ty, true, magnification_);
-                MAP_LOG("tile[%d] new tile at p<%d,%d>", newIdx, m.tx, m.ty);
             } else {
                 tile.z = -1;
             }

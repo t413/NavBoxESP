@@ -97,19 +97,24 @@ LvglTestEnv::LvglTestEnv(uint16_t width, uint16_t height, bool clear) {
 }
 
 LvglTestEnv::~LvglTestEnv() {
+    MAP_LOG("~LvglTestEnv");
     reset();
 }
 
 void LvglTestEnv::reset(uint16_t width, uint16_t height) {
+    // Always deinit first if we've initialized
+    if (disp_) {
+        lv_deinit();  // Full cleanup
+        disp_ = nullptr;
+        base_ = nullptr;
+    }
+
     width_ = width;
     height_ = height;
     buf_.resize(width_ * height_);
-    if (base_) {
-        lv_obj_del(base_);
-        base_ = nullptr;
-    }
-    if (width_ == 0 || height_ == 0) { //de-init
-        lv_deinit();
+    if (width_ == 0 || height_ == 0) {
+        // Deinitialization complete, buffers cleared
+        buf_.clear();
     } else {
         lv_init();
         lv_disp_draw_buf_init(&draw_buf_, buf_.data(), NULL, width_ * height_);
@@ -117,7 +122,9 @@ void LvglTestEnv::reset(uint16_t width, uint16_t height) {
         disp_drv_.draw_buf = &draw_buf_;
         disp_drv_.hor_res = width_;
         disp_drv_.ver_res = height_;
-        disp_drv_.flush_cb = [](lv_disp_drv_t* d, const lv_area_t*, lv_color_t*) { lv_disp_flush_ready(d); };
+        disp_drv_.flush_cb = [](lv_disp_drv_t* d, const lv_area_t*, lv_color_t*) {
+            lv_disp_flush_ready(d);
+        };
         disp_ = lv_disp_drv_register(&disp_drv_);
 
         base_ = lv_obj_create(lv_scr_act());
@@ -126,16 +133,20 @@ void LvglTestEnv::reset(uint16_t width, uint16_t height) {
         lv_obj_set_style_pad_all(base_, 0, 0);
         lv_obj_set_style_border_width(base_, 0, 0);
         lv_obj_set_style_radius(base_, 0, 0);
-        lv_obj_set_style_bg_color(base_, lv_color_hex(0x1b55a0), 0); // #1b55a0
+        lv_obj_set_style_bg_color(base_, lv_color_hex(0x1b55a0), 0);
         lv_obj_set_scrollbar_mode(base_, LV_SCROLLBAR_MODE_OFF);
     }
 }
 
 void LvglTestEnv::draw() {
-    lv_task_handler();
-    if (disp_) {
-        lv_refr_now(disp_);
+    if (!disp_) {
+        MAP_LOG("env draw without disp_");
+        return;
     }
+    lv_obj_invalidate(lv_scr_act()); // Force a full screen refresh, not incremental
+    for (int i = 0; i < 5; i++)
+        lv_task_handler();
+    lv_refr_now(disp_);
 }
 
 filesystem::path LvglTestEnv::outdir() const {

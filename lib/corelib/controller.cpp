@@ -51,7 +51,7 @@ void Controller::iterate(uint32_t now) {
         if (recordTrack_.isRecording()) {
             recordTrack_.addPoint(gps_.toPoint());
             if ((recordTrack_.recordedPoints_ % 20) == 0)
-                getMapView()->getMap()._updateTracks(); //periodically update
+                getMapView()->getMap()._updateLayers(); //periodically update
         }
     }
     _processKeys(now);

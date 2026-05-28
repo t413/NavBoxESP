@@ -25,7 +25,7 @@ struct TrackPoint : public GeoPoint {
     TrackPoint(double l = NO_LOCATION, double n = NO_LOCATION, double a=0) : GeoPoint(l,n), alt(a) { }
     double verticalDistTo(const TrackPoint& o) const;
     // float    speed, hdop;
-    float alt;
-    uint32_t epoch;
+    float alt = 0.0;
+    uint32_t epoch = 0;
     TrackPoint fromDistHeading(double dist, double headingDeg) const;
 };

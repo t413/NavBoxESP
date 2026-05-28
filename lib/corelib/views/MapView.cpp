@@ -1,5 +1,6 @@
 #include "MapView.h"
 #include <log.h>
+#include <MapLayer.h>
 #include "../controller.h"
 #include "../GpsManager.h"
 #include <lvgl.h>
@@ -24,18 +25,30 @@ void MapView::create(lv_obj_t* parent, Controller* ctrl) {
     // Initialize Map on the left side
     map_.begin(root_, 240 - SIDEBAR_W, 135, BASEDIR_TILES "/%d/%d/%d.png");
     map_.setXY(0, 0);
-    map_.setZoom(14);
 
     _createSidebar(root_);
-    map_.setTracks(&(ctrl->recordTrack_), &(ctrl->viewTrack_));
+
+    recTrackLayer_ = new TrackLayer(&map_, map_.colAccent_, &ctrl_->recordTrack_);
+    viewTrackLayer_ = new TrackLayer(&map_, 0xFF7B72, &ctrl_->viewTrack_);
+    map_.addLayer(recTrackLayer_);
+    map_.addLayer(viewTrackLayer_);
+
+    auto& lyr = markerLayer();
+    homeMarkerId_ = lyr.add(Marker({}, map_.homesize_, map_.colHome_, 'H'));
+    dotMarkerId_ = lyr.add(Marker({}, map_.dotsize_, map_.colAccent_)); //second to be on top
+
     _updateSidebar();
 }
 
-void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); }
-void MapView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
+void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = true; }
+void MapView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = false; }
+
+MarkerLayer& MapView::markerLayer() {
+    return *(map_.getMarkerLayer());
+}
 
 void MapView::iterate(bool inview) {
-    isActive_ = inview;
+    // MapRenderer handles its own layer updates via invalidate() or _updateLayers()
 }
 
 void MapView::onGPSUpdate(GpsManager* gps) {
@@ -43,15 +56,13 @@ void MapView::onGPSUpdate(GpsManager* gps) {
     if (!gps_) gps_ = gps;
     auto point = gps->toPoint();
     _updateSidebar(&point);
-
-    map_.setDot(point.lat(), point.lon());
+    markerLayer().updatePoint(dotMarkerId_, point);
 
     if (followMode_ && gps->hasFix()) {
         bool needsCenter = true;
         if (map_.cropmode_) {
             lv_coord_t px, py;
-            map_.project(point.lat(), point.lon(), px, py);
-            if (map_.isVisible(px, py)) { //TODO recenter more often, but not too often
+            if (map_.project(point.lat(), point.lon(), px, py)) {
                 needsCenter = false;
             }
         }
@@ -80,8 +91,10 @@ void MapView::onKey(uint8_t key) {
                 map_.setCenter(gps_->toPoint());
             break;
         case 'h':
-            if (gps_ && gps_->hasFix())
-                map_.setHome(gps_->lat(), gps_->lon());
+            if (gps_ && gps_->hasFix()) {
+                GeoPoint p = gps_->toPoint();
+                markerLayer().updatePoint(homeMarkerId_, p);
+            }
             break;
         case 'r':
             if (ctrl_) ctrl_->toggleRecording();
@@ -91,20 +104,21 @@ void MapView::onKey(uint8_t key) {
 
 bool MapView::handleBack() {
     if (!followMode_ && gps_ && gps_->hasFix()) {
-        setCenter(gps_->toPoint()); //toggle to follow mode
+        setCenter(gps_->toPoint());
         return true;
     } else if (ctrl_ && ctrl_->viewTrack_.size()) {
-        setCenter(ctrl_->viewTrack_.calcCenter()); //toggle to track view
+        setCenter(ctrl_->viewTrack_.calcCenter());
         return true;
     }
     return false;
 }
 
 void MapView::setCenter(const GeoPoint &p) {
-    bool isclose = p.approxDistTo(map_.getDot()) <= 1.0;
-    followMode_ = isclose; //just set follow mode if map is centering on dot
+    // If centering on current GPS location, enable follow mode
+    if (gps_ && gps_->hasFix()) {
+        followMode_ = (p.approxDistTo(gps_->toPoint()) < 1.0);
+    }
     map_.setCenter(p);
-
 }
 
 void MapView::_createSidebar(lv_obj_t* parent) {
@@ -152,15 +166,14 @@ void MapView::_createSidebar(lv_obj_t* parent) {
 
 void MapView::_updateSidebar(const TrackPoint* point) {
     bool fixed = gps_ && point && gps_->hasFix();
-    int hdop = gps_ && gps_->hdop();
+    float hdop = gps_ ? gps_->hdop() : 99.9f;
     lv_color_t dotColor = fixed ? (hdop < 2.0f ? lv_color_hex(0x3FB950) : lv_color_hex(0xD29922)) : lv_color_hex(0xFF7B72);
     lv_obj_set_style_bg_color(gpsDot_, dotColor, 0);
 
     char buf[16];
-    snprintf(buf, 16, fixed ? "%d" : "--", fixed? gps_->satellites() : -1);
+    snprintf(buf, 16, fixed ? "%d" : "--", fixed? gps_->satellites() : 0);
     lv_label_set_text(satLabel_, buf);
 
-    // Battery status
     if (ctrl_) {
         snprintf(buf, 16, "%d%%", ctrl_->getBatt());
         lv_label_set_text(battLabel_, buf);
@@ -173,8 +186,8 @@ void MapView::_updateSidebar(const TrackPoint* point) {
     lv_label_set_text(altLabel_, buf);
 
     // Distance to marked home
-    auto homepoint = map_.getHome();
-    if (fixed && homepoint && point) {
+    if (fixed && homeMarkerId_ && point) {
+        auto homepoint = markerLayer().get(homeMarkerId_).pos;
         float d = homepoint.approxDistTo(*point);
         if (d > 1000.0f) snprintf(buf, 16, "%.1fkm", d / 1000.0f);
         else snprintf(buf, 16, "%.0fm", d);
@@ -185,7 +198,7 @@ void MapView::_updateSidebar(const TrackPoint* point) {
 
     // Sidebar indicator dots
     for (uint8_t i = 0; i < (int)ViewID::COUNT; i++) {
-        bool act = (uint8_t)ctrl_->currentView_ == i;
+        bool act = ctrl_ && (uint8_t)ctrl_->currentView_ == i;
         lv_obj_set_style_bg_color(viewDots_[i], act ? lv_color_hex(COL_ACCENT) : lv_color_hex(COL_TEXT_DIM), 0);
     }
 
