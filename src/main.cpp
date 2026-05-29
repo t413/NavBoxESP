@@ -3,7 +3,7 @@
 #include <M5Cardputer.h>
 #include <SD.h>
 #include <lvgl.h>
-#include <log.h>
+#include <navboxlib/log.h>
 #include "controller.h"
 #include "version.h"
 

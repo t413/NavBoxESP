@@ -2,7 +2,7 @@
 #include "views/AboutView.h"
 #include "views/MapView.h"
 #include <lvgl.h>
-#include <log.h>
+#include <navboxlib/log.h>
 #include <M5Cardputer.h>
 
 Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}

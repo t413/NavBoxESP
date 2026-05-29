@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include "GpsManager.h"
-#include "TrackLog.h"
+#include <navboxlib/TrackLog.h>
 #include "View.h"
 
 namespace ctrlbtns {

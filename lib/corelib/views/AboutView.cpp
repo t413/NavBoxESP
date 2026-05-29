@@ -1,7 +1,7 @@
 #include "AboutView.h"
 #include "../controller.h"
 #include "FilesView.h"
-#include <log.h>
+#include <navboxlib/log.h>
 #include <M5Unified.h>
 #include <lvgl.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 #include "../View.h"
-#include <MapRenderer.h>
+#include <navboxlib/MapRenderer.h>
 
 class Controller;
 class GpsManager;

@@ -1,5 +1,5 @@
 #pragma once
-#include <GeoPoint.h>
+#include <navboxlib/GeoPoint.h>
 
 class TinyGPSPlus;
 class HardwareSerial;

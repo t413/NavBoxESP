@@ -1,6 +1,6 @@
 #include "MapView.h"
-#include <log.h>
-#include <MapLayer.h>
+#include <navboxlib/log.h>
+#include <navboxlib/MapLayer.h>
 #include "../controller.h"
 #include "../GpsManager.h"
 #include <lvgl.h>

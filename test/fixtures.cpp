@@ -1,6 +1,6 @@
 #include "fixtures.h"
 #include <gtest/gtest.h>
-#include <log.h>
+#include <navboxlib/log.h>
 #include <vector>
 #include <fstream>
 #include <iostream>

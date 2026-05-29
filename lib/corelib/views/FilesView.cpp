@@ -3,7 +3,7 @@
 #include "../controller.h"
 #include <lvgl.h>
 #include <SD.h>
-#include <log.h>
+#include <navboxlib/log.h>
 
 void FilesView::create(lv_obj_t* parent, Controller* ctrl) {
     ListView::create(parent, ctrl);

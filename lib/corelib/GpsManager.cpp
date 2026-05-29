@@ -1,5 +1,5 @@
 #include "GpsManager.h"
-#include <log.h>
+#include <navboxlib/log.h>
 #include <Arduino.h>
 #include <TinyGPSPlus.h>
 #include <M5Unified.h>
