@@ -28,6 +28,8 @@ public:
     void switchView(ViewID id);
     _lv_obj_t* getOverlayRoot() { return overlayRoot_; }
     void setOverlay(ViewBase*);
+    void wakeup(uint32_t now);
+    void doLightSleep();
 
     bool toggleRecording();
     bool isRecording() const { return recordTrack_.isRecording(); }

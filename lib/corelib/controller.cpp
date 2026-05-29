@@ -86,12 +86,7 @@ void Controller::_processKeys(uint32_t now) {
             // Special function keys mapped to custom codes
             if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
         }
-        lastActivityMs_ = now;
-        if (dimmed_ || sleeping_) {
-            dimmed_ = sleeping_ = false;
-            M5.Display.wakeup();
-            M5.Display.setBrightness(screenBrightness_);
-        }
+        wakeup(now);
     }
 }
 
@@ -106,6 +101,40 @@ void Controller::_updateDimming(uint32_t now) {
         MAP_LOG("Display sleep after %us idle", idle);
         M5.Display.sleep();
         sleeping_ = true;
+        doLightSleep();
+    }
+}
+
+void Controller::wakeup(uint32_t now) {
+    lastActivityMs_ = now;
+    if (dimmed_ || sleeping_) {
+        dimmed_ = sleeping_ = false;
+        M5.Display.wakeup();
+        M5.Display.setBrightness(screenBrightness_);
+        getMapView()->getMap()._updateLayers();
+    }
+}
+
+void Controller::doLightSleep() {
+    while (sleeping_) {
+        MAP_LOG("light sleeping btn %d", digitalRead(GPIO_NUM_0));
+        auto start = millis();
+        esp_sleep_enable_uart_wakeup(1);  // UART1 = Serial1
+        gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+        esp_sleep_enable_gpio_wakeup();
+        esp_light_sleep_start();
+        // we get to here if woken by gpio interrupt or uart
+        auto now = millis();
+        esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+        MAP_LOG("light sleep wake after %dms, cause %d btn %d", now - start, cause, digitalRead(GPIO_NUM_0));
+        if (cause == ESP_SLEEP_WAKEUP_GPIO) {
+            wakeup(now); break; //we're up!
+        } else {
+            for (uint8_t i = 0; i < 10; i++) {
+                iterate(now); //checks keys, reads uart, allows wakeup
+                delay(1);
+            }
+        }
     }
 }
 
