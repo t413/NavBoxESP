@@ -1,10 +1,10 @@
 #include "ListView.h"
-#include "../controller.h"
+#include "../ControllerBase.h"
 #include <lvgl.h>
 
 using namespace listc;
 
-void ListView::create(lv_obj_t* parent, Controller* ctrl) {
+void ListView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     ctrl_ = ctrl;
     root_ = lv_obj_create(parent);
     lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));

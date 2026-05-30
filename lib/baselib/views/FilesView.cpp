@@ -1,11 +1,13 @@
 // FilesView.cpp
 #include "FilesView.h"
-#include "../controller.h"
+#include "../ControllerBase.h"
 #include <lvgl.h>
-#include <SD.h>
 #include <navboxlib/log.h>
+#include <navboxlib/fileclass.h>
 
-void FilesView::create(lv_obj_t* parent, Controller* ctrl) {
+using namespace fs;
+
+void FilesView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     ListView::create(parent, ctrl);
 }
 
@@ -75,7 +77,7 @@ void FilesView::refresh() {
     }
 
     File entry;
-    while (entry = dir.openNextFile()) {
+    while ((entry = dir.openNextFile())) {
         std::string name = entry.name();
 
         if (name[0] != '.') { // only show non-hidden stuff

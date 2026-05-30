@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "GpsManager.h"
 #include <navboxlib/TrackLog.h>
-#include "View.h"
+#include "ViewBase.h"
 
 namespace ctrlbtns {
     // keyboard buttons

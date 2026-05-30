@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-class Controller;
+class ControllerBase;
 struct _lv_obj_t;
 
 enum class ViewID {
@@ -13,7 +13,7 @@ enum class ViewID {
 class ViewBase {
 public:
     virtual ~ViewBase() = default;
-    virtual void create(_lv_obj_t* parent, Controller*) = 0;
+    virtual void create(_lv_obj_t* parent, ControllerBase*) = 0;
     virtual void show() = 0;
     virtual void hide() = 0;
     virtual void iterate(bool active) = 0;

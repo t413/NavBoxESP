@@ -1,11 +1,11 @@
 #pragma once
-#include "../View.h"
+#include "ViewBase.h"
 #include <vector>
 
 class ListView : public ViewBase {
 public:
     virtual ~ListView() = default;
-    void create(_lv_obj_t* parent, Controller* ctrl) override;
+    void create(_lv_obj_t* parent, ControllerBase* ctrl) override;
     void show() override;
     void hide() override;
     void iterate(bool active) override;
@@ -29,7 +29,7 @@ protected:
     _lv_obj_t* headerLabel_ = nullptr;
     _lv_obj_t* listCont_ = nullptr;
     _lv_obj_t* spinner_ = nullptr;
-    Controller* ctrl_ = nullptr;
+    ControllerBase* ctrl_ = nullptr;
     friend class AboutView;
 
     struct RowUI {
