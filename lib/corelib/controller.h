@@ -3,6 +3,7 @@
 #include "GpsManager.h"
 #include <navboxlib/TrackLog.h>
 #include <ControllerBase.h>
+#include <SettingsManager.h>
 #include <views/ViewBase.h>
 
 class MapView;
@@ -20,7 +21,8 @@ public:
     void switchView(ViewID id);
     _lv_obj_t* getOverlayRoot() override { return overlayRoot_; }
     void setOverlay(ViewBase*) override;
-    SettingsManager* getSetMgr() const override { return nullptr; }
+    const SettingsManager* getSetMgr() const override { return &settingsManager_; }
+    SettingsManager* getSetMgr() override { return &settingsManager_; }
     void wakeup(uint32_t now);
     void doLightSleep();
 
@@ -32,6 +34,7 @@ public:
     const char* gitVersion() const { return version_; }
 
 private:
+    void loadSettings(SettingsManager& mgr);
     MapView* getMapView();
     void _processKeys(uint32_t now);
     void _updateDimming(uint32_t now);
@@ -43,10 +46,12 @@ private:
     bool dimmed_ = false, sleeping_ = false;
 
 public:
+    SettingsManager settingsManager_;
     GpsManager gps_;
     TrackLog recordTrack_;
     TrackLog viewTrack_;
     ViewID currentView_ = ViewID::MAP;
     ViewBase* views_[(int)ViewID::COUNT] = {};
-    uint32_t screenBrightness_ = 160, screenDimSec_ = 60;
+    uint8_t screenBrightness_ = 160;
+    int screenDimSec_ = 60;
 };

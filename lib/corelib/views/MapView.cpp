@@ -13,6 +13,19 @@ static constexpr uint32_t COL_TEXT       = 0xE6EDF3; //E6EDF3
 static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E; //ccd4dc
 static constexpr uint32_t COL_ACCENT     = 0x58A6FF; //58A6FF
 
+void MapView::loadSettings(SettingsManager& mgr) {
+    mgr.addFn("Home Position", [this]() -> SetValue {
+        return geoPointToStr(markerLayer().get(homeMarkerId_).pos);
+    }, [this](SetValue v) {
+        markerLayer().updatePoint(homeMarkerId_, parseGeoPoint(v));
+    });
+    mgr.addFn("Default Start", [this]() -> SetValue {
+        return geoPointToStr(getMap().getCenter());
+    }, [this](SetValue v) {
+        getMap().setCenter(parseGeoPoint(v));
+    });
+}
+
 void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     root_ = lv_obj_create(parent);
     ctrl_ = (Controller*)ctrl;
@@ -250,4 +263,21 @@ void MapView::_makeDivider(lv_obj_t* parent, lv_coord_t y) {
     lv_obj_set_style_bg_color(div, lv_color_hex(0x2a3040), 0);
     lv_obj_set_style_border_width(div, 0, 0);
     lv_obj_clear_flag(div, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+GeoPoint parseGeoPoint(const String& text) {
+    int comma = text.indexOf(',');
+    if (comma < 0) return GeoPoint();
+    String latStr = text.substring(0, comma);
+    String lonStr = text.substring(comma + 1);
+    if (latStr.length() == 0 || lonStr.length() == 0) return false;
+    double lat = latStr.toFloat();
+    double lon = lonStr.toFloat();
+    return GeoPoint(lat, lon);
+}
+String geoPointToStr(const GeoPoint& p) {
+    if (!p) return "";
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.6f,%.6f", p.lat(), p.lon());
+    return String(buf);
 }

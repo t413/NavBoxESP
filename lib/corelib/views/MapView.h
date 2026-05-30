@@ -1,6 +1,7 @@
 #pragma once
 #include <views/ViewBase.h>
 #include <navboxlib/MapRenderer.h>
+#include <stringmoc.h>
 
 class Controller;
 class GpsManager;
@@ -11,6 +12,7 @@ struct _lv_font_t;
 
 class MapView : public ViewBase {
 public:
+    void loadSettings(SettingsManager& mgr) override;
     void create(_lv_obj_t*, ControllerBase*) override;
     void show() override;
     void hide() override;
@@ -55,3 +57,6 @@ private:
     static _lv_obj_t* _makeDot(_lv_obj_t* parent, lv_coord_t x, lv_coord_t y);
     static void _makeDivider(_lv_obj_t* parent, lv_coord_t y);
 };
+
+GeoPoint parseGeoPoint(const String&);
+String geoPointToStr(const GeoPoint&);

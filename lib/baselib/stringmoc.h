@@ -2,7 +2,7 @@
 
 #ifdef ARDUINO
 // In Arduino environment, use the real String
-#include <Arduino.h>
+#include <WString.h>
 #else
 // Minimal String mock for native testing
 #include <cstring>

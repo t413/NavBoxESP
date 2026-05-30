@@ -10,7 +10,8 @@ struct MockCtrl : public ControllerBase {
     MockCtrl(SettingsManager* m) : mgr(m) {}
     _lv_obj_t* getOverlayRoot() override { return nullptr; }
     void setOverlay(ViewBase*) override {}
-    SettingsManager* getSetMgr() const override { return mgr; }
+    const SettingsManager* getSetMgr() const override { return mgr; }
+    SettingsManager* getSetMgr() override { return mgr; }
 };
 
 TEST(SettingsViewSimple, BasicShow) {

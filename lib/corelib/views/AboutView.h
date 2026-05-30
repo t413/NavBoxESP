@@ -30,14 +30,8 @@ private:
     enum RowID {
         ROW_VIEW_TRACK = 0,
         ROW_REC_TRACK,
-        ROW_BRIGHTNESS,
-        ROW_DIM_TIME,
         ROW_COUNT
     };
 
-    static constexpr uint8_t BRIGHT_STEP = 20;
-    static constexpr uint8_t BRIGHT_MIN  = 20;
-
-    static const uint32_t DIM_STEP = 10;
     static uint32_t statusBorderColor(bool active);
 };

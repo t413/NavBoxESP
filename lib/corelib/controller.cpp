@@ -1,6 +1,7 @@
 #include "controller.h"
 #include "views/AboutView.h"
 #include "views/MapView.h"
+#include "views/SettingsView.h"
 #include <lvgl.h>
 #include <navboxlib/log.h>
 #include <M5Cardputer.h>
@@ -23,6 +24,12 @@ void Controller::setup(lv_obj_t* parent) {
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
     views_[(int)ViewID::ABOUT] = new AboutView();
+    views_[(int)ViewID::SETTINGS] = new SettingsView();
+
+    for (int i = 0; i < (int)ViewID::COUNT; i++) {
+        if (views_[i]) views_[i]->loadSettings(settingsManager_);
+    }
+    settingsManager_.load();
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->create(parent, this);
@@ -30,6 +37,12 @@ void Controller::setup(lv_obj_t* parent) {
     switchView(ViewID::MAP);
     lastActivityMs_ = millis();
     M5.Display.setBrightness(screenBrightness_);
+}
+
+void Controller::loadSettings(SettingsManager& mgr) {
+    mgr.add("Brightness", &screenBrightness_, (uint8_t) 20, (uint8_t) 255).setAdjBump(20)
+        .onChange([this](){ M5.Display.setBrightness(screenBrightness_); });
+    mgr.add("Dim Time", &screenDimSec_, 0, 600).setAdjBump(10);
 }
 
 void Controller::setOverlay(ViewBase* overlay) {

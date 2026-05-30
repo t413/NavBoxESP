@@ -33,8 +33,6 @@ void AboutView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     // Add rows using ListView's addRow
     addRow("View Track", "");
     addRow("Rec Track", "");
-    addRow("Brightness", "");
-    addRow("Dim Time", "");
 
     // Initial refresh to populate all row values
     refreshAll();
@@ -75,15 +73,6 @@ void AboutView::refreshRow(int idx) {
             setRowValue(idx, slash ? slash + 1 : path);
         }
     }
-    else if (idx == ROW_BRIGHTNESS) {
-        int pct = (int)roundf(ctrlr()->screenBrightness_ * 100.0f / 255.0f);
-        snprintf(buf, sizeof(buf), "%d%%  %s", pct, "<>");
-        setRowValue(idx, buf);
-    }
-    else if (idx == ROW_DIM_TIME) {
-        snprintf(buf, sizeof(buf), "%ds  %s", ctrlr()->screenDimSec_, "<>");
-        setRowValue(idx, buf);
-    }
 }
 
 void AboutView::showFilePicker(TrackLog* dest) {
@@ -116,12 +105,6 @@ void AboutView::onRowAction(int idx) {
             else showFilePicker(&ctrlr()->recordTrack_);
             break;
         }
-        case ROW_BRIGHTNESS:
-            ctrlr()->screenBrightness_ = std::min(255U, ctrlr()->screenBrightness_ + BRIGHT_STEP);
-            M5.Display.setBrightness(ctrlr()->screenBrightness_);
-            break;
-
-        case ROW_DIM_TIME: break; //require left/right adjust
         default:
             break;
     }
@@ -129,16 +112,4 @@ void AboutView::onRowAction(int idx) {
 }
 
 void AboutView::onRowAdjust(int idx, bool right) {
-    char buf[48];
-
-    if (idx == ROW_BRIGHTNESS) {
-        int delta = right ? BRIGHT_STEP : -BRIGHT_STEP;
-        int newVal = (int)ctrlr()->screenBrightness_ + delta;
-        ctrlr()->screenBrightness_ = std::max((unsigned)BRIGHT_MIN, std::min(255U, (unsigned)newVal));
-        M5.Display.setBrightness(ctrlr()->screenBrightness_);
-    }
-    else if (idx == ROW_DIM_TIME) {
-        ctrlr()->screenDimSec_ = std::max((uint32_t)0, ctrlr()->screenDimSec_ + (right ? DIM_STEP : -DIM_STEP));
-    }
-    refreshAll();
 }

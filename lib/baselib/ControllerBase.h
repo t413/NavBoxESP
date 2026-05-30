@@ -29,5 +29,6 @@ public:
     virtual _lv_obj_t* getOverlayRoot() = 0;
     virtual void setOverlay(ViewBase* overlay) = 0;
 
-    virtual SettingsManager* getSetMgr() const = 0;
+    virtual const SettingsManager* getSetMgr() const = 0;
+    virtual SettingsManager* getSetMgr() = 0;
 };
