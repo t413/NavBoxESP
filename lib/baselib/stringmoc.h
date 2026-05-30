@@ -123,21 +123,6 @@ public:
     bool isEmpty() const {
         return !buffer_ || len_ == 0;
     }
-
-    bool isNumeric() const {
-        if (isEmpty()) return false;
-        char* endptr;
-        strtod(buffer_, &endptr);
-        return *endptr == '\0';
-    }
-
-    bool isInt() const {
-        if (isEmpty()) return false;
-        char* endptr;
-        long val = strtol(buffer_, &endptr, 10);
-        (void)val;
-        return *endptr == '\0';
-    }
 };
 
 #endif

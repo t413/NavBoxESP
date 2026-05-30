@@ -85,6 +85,7 @@ void Controller::_processKeys(uint32_t now) {
             }
             // Special function keys mapped to custom codes
             if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
+            if (kb.isKeyPressed(KEY_BACKSPACE)) active->onKey(ctrlbtns::KEY_DELETE);
         }
         wakeup(now);
     }

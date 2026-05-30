@@ -6,6 +6,7 @@ class ScalarSetting : public Setting {
     T* value_;
     T min_;
     T max_;
+    float bump_ = 1.0f;
 
 public:
     ScalarSetting(const SetValue& key, T* value, T min, T max);
@@ -13,6 +14,8 @@ public:
     SetValue get() const override;
     void set(const SetValue& value) override;
     T getValue() const { return *value_; }
+    virtual Setting& setAdjBump(float v) override { bump_ = v; return *this; }
+    virtual float getAdjBump() const override { return bump_; }
 };
 extern template class ScalarSetting<int>;
 extern template class ScalarSetting<float>;

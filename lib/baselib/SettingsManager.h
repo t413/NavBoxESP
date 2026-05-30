@@ -16,12 +16,12 @@ public:
     virtual SetValue get() const = 0;
     virtual void set(const SetValue& value) = 0;
     const SetValue& getKey() const { return key_; }
-    Setting& setNumeric(bool isNum) { isNum_ = isNum; return *this; }
     Setting& onChange(std::function<void()> cb) {
         onChange_ = cb;
         return *this;
     }
-protected:
+    virtual Setting& setAdjBump(float) { return *this; }
+    virtual float getAdjBump() const { return 1.0f; }
     SetValue key_;
     bool isNum_ = false;
     std::function<void()> onChange_;
@@ -41,6 +41,8 @@ public:
     Setting& add(const SetValue& name, T* value, T min, T max);
     Setting& add(const SetValue& name, String*);
     Setting& addFn(const SetValue& name, GetterFn getter, SetterFn setter);
+
+    const std::vector<std::unique_ptr<Setting>>& getSettings() const { return settings_; }
 
     bool load(); /// Load settings from config file
     bool save(); /// Saves settings to config file

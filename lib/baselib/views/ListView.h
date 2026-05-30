@@ -9,7 +9,7 @@ public:
     void show() override;
     void hide() override;
     void iterate(bool active) override;
-    void onKey(uint8_t key) override;
+    virtual void onKey(uint8_t key) override;
     virtual bool handleBack() override { return false; }
 
 protected:

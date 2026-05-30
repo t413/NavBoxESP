@@ -6,6 +6,7 @@ struct _lv_obj_t;
 namespace ctrlbtns {
     static constexpr char KEY_ESC = '`';
     static constexpr char KEY_RETURN = '\n';
+    static constexpr char KEY_DELETE = 0x2a;
     static constexpr char KEY_ARROW_UP = ';';
     static constexpr char KEY_ARROW_DOWN = '.';
     static constexpr char KEY_ARROW_LEFT = ',';
