@@ -21,6 +21,7 @@ extern const std::vector<uint8_t> png256hi;
 struct TmpFileHelper {
     std::string fn_;
     TmpFileHelper(const std::vector<uint8_t> &img, std::string fn="");
+    TmpFileHelper(const std::string &content, std::string fn="");
     ~TmpFileHelper() { rm(); }
     void rm();
 };

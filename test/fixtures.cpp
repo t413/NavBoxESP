@@ -88,6 +88,9 @@ TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img, string fn) {
     ofs.write((const char*) img.data(), img.size());
     ofs.close();
 }
+TmpFileHelper::TmpFileHelper(const std::string &content, string fn)
+    : TmpFileHelper(std::vector<uint8_t>(content.begin(), content.end()), fn) {}
+
 void TmpFileHelper::rm() { remove(fn_.c_str()); }
 
 

@@ -122,29 +122,27 @@ bool SettingsManager::load() {
 
 bool SettingsManager::save() {
     JsonDocument doc;
-
+    // Load existing file to preserve unknown keys
+    if (auto fileRead = SD.open(configPath_.c_str(), "r")) {
+        deserializeJson(doc, fileRead);
+        fileRead.close();
+    }
+    // Update or add current settings
     for (const auto& setting : settings_) {
         const SetValue& key = setting->getKey();
-
         SetValue value = setting->get();
         if (setting->isNum_) {
             doc[key.c_str()] = value.toFloat();
         } else {
-            doc[key.c_str()] = value.c_str(); //TODO allow for non-string values
+            doc[key.c_str()] = value.c_str();
         }
     }
-
-    auto file = SD.open(configPath_.c_str(), "w");
-    // my file mock needs these methods:
-    // size_t write(uint8_t c) { return write(&c, 1); }
-    // int read() { uint8_t r; return read(&r, 1) == 1? r : -1; }
-    if (!file) {
-        MAP_LOG("Failed to open %s for writing", configPath_.c_str());
-        return false;
+    if (auto file = SD.open(configPath_.c_str(), "w")) {
+        serializeJsonPretty(doc, file);
+        file.close();
+        MAP_LOG("Saved %d settings", (int)settings_.size());
+        return true;
     }
-    serializeJsonPretty(doc, file);
-    file.close();
-
-    MAP_LOG("Saved %d settings", (int)settings_.size());
-    return true;
+    MAP_LOG("Failed to open %s for writing", configPath_.c_str());
+    return false;
 }

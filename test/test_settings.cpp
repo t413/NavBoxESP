@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <SettingsManager.h>
 #include <navboxlib/log.h>
+#include <fstream>
 #include "fixtures.h"
 
 TEST(SettingsTest, ScalarPointerSettings) {
@@ -110,4 +111,28 @@ TEST(SettingsTest, json) {
     EXPECT_FALSE(enabled);
     EXPECT_EQ(strval, "woo");
     remove(path);
+}
+
+TEST(SettingsTest, PreserveUnknownValues) {
+    fixtures::TmpFileHelper jfile("{\"zoom\": 12, \"extra_field\": \"keep_me\", \"bright\": 0.75}", "jsonfile");
+
+    int zoom = 0;
+    float bright = 0.0f;
+    SettingsManager mgr(jfile.fn_.c_str());
+    mgr.add("zoom", &zoom, 1, 20);
+    mgr.add("bright", &bright, 0.0f, 1.0f);
+
+    // 2. Load - should populate zoom and bright, ignore extra_field
+    EXPECT_TRUE(mgr.load());
+    EXPECT_EQ(zoom, 12);
+    EXPECT_NEAR(bright, 0.75f, 0.01f);
+
+    mgr.save();
+
+    // Verify contents
+    std::ifstream ifs(jfile.fn_);
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+    fixtures::printfile(jfile.fn_.c_str());
+    EXPECT_TRUE(content.find("zoom") != std::string::npos);
+    EXPECT_TRUE(content.find("extra_field") != std::string::npos);
 }
