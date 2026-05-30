@@ -1,6 +1,6 @@
 #pragma once
-#include "../View.h"
-#include "ListView.h"
+#include <views/ViewBase.h>
+#include <views/ListView.h>
 #include <string>
 
 class Controller;
@@ -12,10 +12,12 @@ class TrackLog;
 /// Subclasses ListView and uses the standard row interaction pattern.
 class AboutView : public ListView {
 public:
-    void create(_lv_obj_t* parent, Controller* ctrl) override;
+    void create(_lv_obj_t* parent, ControllerBase* ctrl) override;
     void show() override;
     void iterate(bool inview) override;
     bool handleBack() override { return false; }
+    Controller* ctrlr() const { return (Controller*) ctrl_; }
+
 
 private:
     void refresh();

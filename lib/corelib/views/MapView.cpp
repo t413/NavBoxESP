@@ -13,9 +13,9 @@ static constexpr uint32_t COL_TEXT       = 0xE6EDF3; //E6EDF3
 static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E; //ccd4dc
 static constexpr uint32_t COL_ACCENT     = 0x58A6FF; //58A6FF
 
-void MapView::create(lv_obj_t* parent, Controller* ctrl) {
+void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     root_ = lv_obj_create(parent);
-    ctrl_ = ctrl;
+    ctrl_ = (Controller*)ctrl;
     lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_pad_all(root_, 0, 0);
     lv_obj_set_style_border_width(root_, 0, 0);

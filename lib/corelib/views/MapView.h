@@ -1,5 +1,5 @@
 #pragma once
-#include "../View.h"
+#include <views/ViewBase.h>
 #include <navboxlib/MapRenderer.h>
 
 class Controller;
@@ -11,7 +11,7 @@ struct _lv_font_t;
 
 class MapView : public ViewBase {
 public:
-    void create(_lv_obj_t*, Controller*) override;
+    void create(_lv_obj_t*, ControllerBase*) override;
     void show() override;
     void hide() override;
     void iterate(bool inview) override;

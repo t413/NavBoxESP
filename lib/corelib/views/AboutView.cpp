@@ -1,6 +1,6 @@
 #include "AboutView.h"
 #include "../controller.h"
-#include "FilesView.h"
+#include <views/FilesView.h>
 #include <navboxlib/log.h>
 #include <M5Unified.h>
 #include <lvgl.h>
@@ -15,7 +15,7 @@ uint32_t AboutView::statusBorderColor(bool active) {
     return active ? COL_GREEN : COL_BORDER;
 }
 
-void AboutView::create(lv_obj_t* parent, Controller* ctrl) {
+void AboutView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     ListView::create(parent, ctrl);
 
     // adjust header section
@@ -24,7 +24,7 @@ void AboutView::create(lv_obj_t* parent, Controller* ctrl) {
     lv_obj_set_style_text_align(headerLabel_, LV_TEXT_ALIGN_CENTER, 0);
 
     lv_obj_t* versLabel = lv_label_create(header_);
-    lv_label_set_text(versLabel, ctrl_->gitVersion());
+    lv_label_set_text(versLabel, ctrlr()->gitVersion());
     lv_obj_set_style_text_font(versLabel, &lv_font_montserrat_10, 0);
     lv_obj_set_style_text_color(versLabel, lv_color_hex(COL_DIM), 0);
     lv_obj_set_width(versLabel, LV_PCT(100));
@@ -57,31 +57,31 @@ void AboutView::refreshRow(int idx) {
     char buf[48];
 
     if (idx == ROW_VIEW_TRACK) {
-        bool has = ctrl_->viewTrack_.size() > 0;
+        bool has = ctrlr()->viewTrack_.size() > 0;
         setRowBorder(idx, statusBorderColor(has));
-        const char* path = has ? ctrl_->viewTrack_.getRecPath() : "(none)";
+        const char* path = has ? ctrlr()->viewTrack_.getRecPath() : "(none)";
         const char* slash = strrchr(path, '/');
         setRowValue(idx, slash ? slash + 1 : path);
     }
     else if (idx == ROW_REC_TRACK) {
-        bool has = ctrl_->recordTrack_.size() > 0 || ctrl_->isRecording();
+        bool has = ctrlr()->recordTrack_.size() > 0 || ctrlr()->isRecording();
         setRowBorder(idx, statusBorderColor(has));
-        if (ctrl_->isRecording()) {
-            snprintf(buf, sizeof(buf), "REC %u pts", ctrl_->recordTrack_.recordedPoints_);
+        if (ctrlr()->isRecording()) {
+            snprintf(buf, sizeof(buf), "REC %u pts", ctrlr()->recordTrack_.recordedPoints_);
             setRowValue(idx, buf, COL_RED);
         } else {
-            const char* path = has ? ctrl_->recordTrack_.getRecPath() : "(none)";
+            const char* path = has ? ctrlr()->recordTrack_.getRecPath() : "(none)";
             const char* slash = strrchr(path, '/');
             setRowValue(idx, slash ? slash + 1 : path);
         }
     }
     else if (idx == ROW_BRIGHTNESS) {
-        int pct = (int)roundf(ctrl_->screenBrightness_ * 100.0f / 255.0f);
+        int pct = (int)roundf(ctrlr()->screenBrightness_ * 100.0f / 255.0f);
         snprintf(buf, sizeof(buf), "%d%%  %s", pct, "<>");
         setRowValue(idx, buf);
     }
     else if (idx == ROW_DIM_TIME) {
-        snprintf(buf, sizeof(buf), "%ds  %s", ctrl_->screenDimSec_, "<>");
+        snprintf(buf, sizeof(buf), "%ds  %s", ctrlr()->screenDimSec_, "<>");
         setRowValue(idx, buf);
     }
 }
@@ -96,7 +96,7 @@ void AboutView::showFilePicker(TrackLog* dest) {
     picker->show();
     picker->setCallback([this,dest](const char* path) {
         if (dest) {
-            ctrl_->loadTrack(path, dest);
+            ctrlr()->loadTrack(path, dest);
             ctrl_->setOverlay(nullptr);
         }
     });
@@ -106,19 +106,19 @@ void AboutView::showFilePicker(TrackLog* dest) {
 void AboutView::onRowAction(int idx) {
     switch (idx) {
         case ROW_VIEW_TRACK: {
-            if (ctrl_->viewTrack_.size() > 0) ctrl_->viewTrack_.clear();
-            else showFilePicker(&ctrl_->viewTrack_);
+            if (ctrlr()->viewTrack_.size() > 0) ctrlr()->viewTrack_.clear();
+            else showFilePicker(&ctrlr()->viewTrack_);
             break;
         }
         case ROW_REC_TRACK: {
-            if (ctrl_->isRecording()) ctrl_->toggleRecording();
-            else if (ctrl_->recordTrack_.size() > 0) ctrl_->recordTrack_.clear();
-            else showFilePicker(&ctrl_->recordTrack_);
+            if (ctrlr()->isRecording()) ctrlr()->toggleRecording();
+            else if (ctrlr()->recordTrack_.size() > 0) ctrlr()->recordTrack_.clear();
+            else showFilePicker(&ctrlr()->recordTrack_);
             break;
         }
         case ROW_BRIGHTNESS:
-            ctrl_->screenBrightness_ = std::min(255U, ctrl_->screenBrightness_ + BRIGHT_STEP);
-            M5.Display.setBrightness(ctrl_->screenBrightness_);
+            ctrlr()->screenBrightness_ = std::min(255U, ctrlr()->screenBrightness_ + BRIGHT_STEP);
+            M5.Display.setBrightness(ctrlr()->screenBrightness_);
             break;
 
         case ROW_DIM_TIME: break; //require left/right adjust
@@ -133,12 +133,12 @@ void AboutView::onRowAdjust(int idx, bool right) {
 
     if (idx == ROW_BRIGHTNESS) {
         int delta = right ? BRIGHT_STEP : -BRIGHT_STEP;
-        int newVal = (int)ctrl_->screenBrightness_ + delta;
-        ctrl_->screenBrightness_ = std::max((unsigned)BRIGHT_MIN, std::min(255U, (unsigned)newVal));
-        M5.Display.setBrightness(ctrl_->screenBrightness_);
+        int newVal = (int)ctrlr()->screenBrightness_ + delta;
+        ctrlr()->screenBrightness_ = std::max((unsigned)BRIGHT_MIN, std::min(255U, (unsigned)newVal));
+        M5.Display.setBrightness(ctrlr()->screenBrightness_);
     }
     else if (idx == ROW_DIM_TIME) {
-        ctrl_->screenDimSec_ = std::max((uint32_t)0, ctrl_->screenDimSec_ + (right ? DIM_STEP : -DIM_STEP));
+        ctrlr()->screenDimSec_ = std::max((uint32_t)0, ctrlr()->screenDimSec_ + (right ? DIM_STEP : -DIM_STEP));
     }
     refreshAll();
 }

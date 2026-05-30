@@ -20,16 +20,13 @@ SetValue ScalarSetting<T>::get() const {
     return SetValue(*value_);
 }
 
+template<typename T>T parseValue(const SetValue& v) { return static_cast<T>(v.toInt()); } // Fallback parser: integer-like types
+template<> float parseValue<float>(const SetValue& v) { return v.toFloat(); } // float specialization
+template<> bool parseValue<bool>(const SetValue& v) { return (v.toInt() != 0 || v == "true"); } // bool specialization
+
 template<typename T>
 void ScalarSetting<T>::set(const SetValue& value) {
-    T newVal;
-    if constexpr (std::is_same_v<T, float>) {
-        newVal = value.toFloat();
-    } else if constexpr (std::is_same_v<T, bool>) {
-        newVal = (value.toInt() != 0 || value == "true");
-    } else {
-        newVal = value.toInt();
-    }
+    T newVal = parseValue<T>(value);
     if (newVal >= min_ && newVal <= max_) { //apply limits
         if (*value_ != newVal) {
             *value_ = newVal;
@@ -37,6 +34,7 @@ void ScalarSetting<T>::set(const SetValue& value) {
         }
     }
 }
+
 
 // Explicit template instantiations
 template class ScalarSetting<int>;
@@ -57,7 +55,7 @@ SettingsManager::~SettingsManager() {
 
 template<typename T>
 Setting& SettingsManager::add(const SetValue& name, T* value, T min, T max) {
-    auto setting = std::make_unique<ScalarSetting<T>>(name, value, min, max);
+    auto setting = std::unique_ptr<ScalarSetting<T>>(new ScalarSetting<T>(name, value, min, max));
     auto* ptr = setting.get();
     settings_.push_back(std::move(setting));
     return *ptr;
@@ -70,14 +68,14 @@ template Setting& SettingsManager::add<uint8_t>(const SetValue& name, uint8_t* v
 template Setting& SettingsManager::add<bool>(const SetValue& name, bool* value, bool min, bool max);
 
 Setting& SettingsManager::add(const SetValue& name, String* value) {
-    auto setting = std::make_unique<StrSetting>(name, value);
+    auto setting = std::unique_ptr<StrSetting>(new StrSetting(name, value));
     auto* ptr = setting.get();
     settings_.push_back(std::move(setting));
     return *ptr;
 }
 
 Setting& SettingsManager::addFn(const SetValue& name, GetterFn getter, SetterFn setter) {
-    auto setting = std::make_unique<CallbackSetting>(name, getter, setter);
+    auto setting = std::unique_ptr<CallbackSetting>(new CallbackSetting(name, getter, setter));
     auto* ptr = setting.get();
     settings_.push_back(std::move(setting));
     return *ptr;
@@ -112,8 +110,8 @@ bool SettingsManager::load() {
         Setting* s = find(kv.key().c_str());
         if (s) {
             JsonVariant v = kv.value();
-            if        (v.is<float>()) { s->set(v.as<float>());
-            } else if (v.is<int>())   { s->set(v.as<int>());
+            if        (v.is<float>()) { s->set(SetValue(v.as<float>()));
+            } else if (v.is<int>())   { s->set(SetValue(v.as<int>()));
             } else { s->set(v.as<const char*>()); } //string
         } else {
             MAP_LOG("Unknown setting in config: %s", kv.key().c_str());
