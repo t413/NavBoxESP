@@ -58,6 +58,7 @@ SettingsManager::Group SettingsManager::group(std::string name) {
         if (groups_[i] == name)
             return Group(i, this);
     groups_.push_back(name);
+    MAP_LOG("Added group[%d] %s", (int)groups_.size() - 1, name.c_str());
     return Group(groups_.size() - 1, this);
 }
 
@@ -65,6 +66,7 @@ SettingsManager::Group SettingsManager::group(std::string name) {
 template<typename T>
 Setting& SettingsManager::Group::add(const SetValue& name, T* value, T min, T max) {
     auto setting = std::unique_ptr<ScalarSetting<T>>(new ScalarSetting<T>(name, value, min, max));
+    setting->group_ = id;
     auto* ptr = setting.get();
     mgr->settings_.push_back(std::move(setting));
     return *ptr;
@@ -78,6 +80,7 @@ template Setting& SettingsManager::Group::add<bool>(const SetValue& name, bool* 
 
 Setting& SettingsManager::Group::add(const SetValue& name, String* value) {
     auto setting = std::unique_ptr<StrSetting>(new StrSetting(name, value));
+    setting->group_ = id;
     auto* ptr = setting.get();
     mgr->settings_.push_back(std::move(setting));
     return *ptr;
@@ -85,6 +88,7 @@ Setting& SettingsManager::Group::add(const SetValue& name, String* value) {
 
 Setting& SettingsManager::Group::addFn(const SetValue& name, GetterFn getter, SetterFn setter) {
     auto setting = std::unique_ptr<CallbackSetting>(new CallbackSetting(name, getter, setter));
+    setting->group_ = id;
     auto* ptr = setting.get();
     mgr->settings_.push_back(std::move(setting));
     return *ptr;
@@ -99,8 +103,8 @@ Setting* SettingsManager::find(const SetValue& name) {
     return nullptr;
 }
 
-bool SettingsManager::load() {
-    MAP_LOG("Loading settings from %s", configPath_.c_str());
+bool SettingsManager::load(bool lateOnly) {
+    MAP_LOG("Setting load from %s into %d slots", configPath_.c_str(), (int)settings_.size());
     auto file = SD.open(configPath_.c_str(), "r");
     if (!file) {
         MAP_LOG("Failed to open %s for reading", configPath_.c_str());
@@ -118,12 +122,15 @@ bool SettingsManager::load() {
     for (JsonPair kv : root) {
         Setting* s = find(kv.key().c_str());
         if (s) {
+            if (s->late_ != lateOnly) continue;
             JsonVariant v = kv.value();
             if        (v.is<float>()) { s->set(SetValue(v.as<float>()));
             } else if (v.is<int>())   { s->set(SetValue(v.as<int>()));
             } else { s->set(v.as<const char*>()); } //string
+            const auto res = s->get();
+            MAP_LOG("setting loaded %s -> %s", kv.key().c_str(), res.c_str());
         } else {
-            MAP_LOG("Unknown setting in config: %s", kv.key().c_str());
+            MAP_LOG("setting missing from config: %s", kv.key().c_str());
         }
     }
     return true;

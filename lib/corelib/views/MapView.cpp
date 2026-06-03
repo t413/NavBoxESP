@@ -19,7 +19,7 @@ void MapView::loadSettings(SettingsManager& mgr) {
         return geoPointToStr(markerLayer().get(homeMarkerId_).pos);
     }, [this](SetValue v) {
         markerLayer().updatePoint(homeMarkerId_, parseGeoPoint(v));
-    });
+    }).setLate(true);
     group.addFn("Default Start", [this]() -> SetValue {
         return geoPointToStr(getMap().getCenter());
     }, [this](SetValue v) {

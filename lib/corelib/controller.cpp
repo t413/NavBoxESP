@@ -31,11 +31,12 @@ void Controller::setup(lv_obj_t* parent) {
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->loadSettings(settingsManager_);
     }
-    settingsManager_.load(); //now load from file into position
+    settingsManager_.load(false); //now load from file into position
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) { //now start views
         if (views_[i]) views_[i]->create(parent, this);
     }
+    settingsManager_.load(true); //now load late settings
     switchView(ViewID::MAP);
     lastActivityMs_ = millis();
     M5.Display.setBrightness(screenBrightness_);

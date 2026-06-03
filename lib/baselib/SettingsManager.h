@@ -21,11 +21,13 @@ public:
         return *this;
     }
     virtual Setting& setAdjBump(float) { return *this; }
+    virtual Setting& setLate(bool late=true) { late_ = late; return *this; }
     virtual float getAdjBump() const { return 1.0f; }
     SetValue key_;
     bool isNum_ = false;
     std::function<void()> onChange_;
     uint8_t group_ = 0;
+    bool late_ = false;
     friend class SettingsManager;
 };
 
@@ -56,7 +58,7 @@ public:
     const std::vector<std::string>& getGroups() const { return groups_; }
     const std::string& getGroup(uint8_t id) const { return groups_.at(id); }
 
-    bool load(); /// Load settings from config file
+    bool load(bool lateOnly); /// Load settings from config file
     bool save(); /// Saves settings to config file
     Setting* find(const SetValue& name);
 
