@@ -26,12 +26,14 @@ void Controller::setup(lv_obj_t* parent) {
     views_[(int)ViewID::ABOUT] = new AboutView();
     views_[(int)ViewID::SETTINGS] = new SettingsView();
 
+    // first setup what settings exist
+    loadSettings(settingsManager_);
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
         if (views_[i]) views_[i]->loadSettings(settingsManager_);
     }
-    settingsManager_.load();
+    settingsManager_.load(); //now load from file into position
 
-    for (int i = 0; i < (int)ViewID::COUNT; i++) {
+    for (int i = 0; i < (int)ViewID::COUNT; i++) { //now start views
         if (views_[i]) views_[i]->create(parent, this);
     }
     switchView(ViewID::MAP);
@@ -40,9 +42,10 @@ void Controller::setup(lv_obj_t* parent) {
 }
 
 void Controller::loadSettings(SettingsManager& mgr) {
-    mgr.add("Brightness", &screenBrightness_, (uint8_t) 20, (uint8_t) 255).setAdjBump(20)
+    auto group = mgr.group("basic");
+    group.add("Brightness", &screenBrightness_, (uint8_t) 20, (uint8_t) 255).setAdjBump(20)
         .onChange([this](){ M5.Display.setBrightness(screenBrightness_); });
-    mgr.add("Dim Time", &screenDimSec_, 0, 600).setAdjBump(10);
+    group.add("Dim Time", &screenDimSec_, 0, 600).setAdjBump(10);
 }
 
 void Controller::setOverlay(ViewBase* overlay) {

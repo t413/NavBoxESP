@@ -53,31 +53,40 @@ SettingsManager::SettingsManager(const SetValue& configPath)
 SettingsManager::~SettingsManager() {
 }
 
+SettingsManager::Group SettingsManager::group(std::string name) {
+    for (size_t i = 0; i < groups_.size(); ++i)
+        if (groups_[i] == name)
+            return Group(i, this);
+    groups_.push_back(name);
+    return Group(groups_.size() - 1, this);
+}
+
+
 template<typename T>
-Setting& SettingsManager::add(const SetValue& name, T* value, T min, T max) {
+Setting& SettingsManager::Group::add(const SetValue& name, T* value, T min, T max) {
     auto setting = std::unique_ptr<ScalarSetting<T>>(new ScalarSetting<T>(name, value, min, max));
     auto* ptr = setting.get();
-    settings_.push_back(std::move(setting));
+    mgr->settings_.push_back(std::move(setting));
     return *ptr;
 }
 
 // Explicit template instantiations for SettingsManager::add
-template Setting& SettingsManager::add<int>(const SetValue& name, int* value, int min, int max);
-template Setting& SettingsManager::add<float>(const SetValue& name, float* value, float min, float max);
-template Setting& SettingsManager::add<uint8_t>(const SetValue& name, uint8_t* value, uint8_t min, uint8_t max);
-template Setting& SettingsManager::add<bool>(const SetValue& name, bool* value, bool min, bool max);
+template Setting& SettingsManager::Group::add<int>(const SetValue& name, int* value, int min, int max);
+template Setting& SettingsManager::Group::add<float>(const SetValue& name, float* value, float min, float max);
+template Setting& SettingsManager::Group::add<uint8_t>(const SetValue& name, uint8_t* value, uint8_t min, uint8_t max);
+template Setting& SettingsManager::Group::add<bool>(const SetValue& name, bool* value, bool min, bool max);
 
-Setting& SettingsManager::add(const SetValue& name, String* value) {
+Setting& SettingsManager::Group::add(const SetValue& name, String* value) {
     auto setting = std::unique_ptr<StrSetting>(new StrSetting(name, value));
     auto* ptr = setting.get();
-    settings_.push_back(std::move(setting));
+    mgr->settings_.push_back(std::move(setting));
     return *ptr;
 }
 
-Setting& SettingsManager::addFn(const SetValue& name, GetterFn getter, SetterFn setter) {
+Setting& SettingsManager::Group::addFn(const SetValue& name, GetterFn getter, SetterFn setter) {
     auto setting = std::unique_ptr<CallbackSetting>(new CallbackSetting(name, getter, setter));
     auto* ptr = setting.get();
-    settings_.push_back(std::move(setting));
+    mgr->settings_.push_back(std::move(setting));
     return *ptr;
 }
 

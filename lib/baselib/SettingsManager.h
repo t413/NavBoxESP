@@ -25,24 +25,36 @@ public:
     SetValue key_;
     bool isNum_ = false;
     std::function<void()> onChange_;
+    uint8_t group_ = 0;
     friend class SettingsManager;
 };
 
 
 class SettingsManager {
     std::vector<std::unique_ptr<Setting>> settings_;
+    std::vector<std::string> groups_;
     SetValue configPath_;
 
 public:
     explicit SettingsManager(const SetValue& configPath = "/maps/config.json");
     ~SettingsManager();
 
-    template<typename T>
-    Setting& add(const SetValue& name, T* value, T min, T max);
-    Setting& add(const SetValue& name, String*);
-    Setting& addFn(const SetValue& name, GetterFn getter, SetterFn setter);
+    class Group {
+        uint8_t id = 255;
+        SettingsManager* mgr = nullptr;
+        friend class SettingsManager;
+        Group(uint8_t id, SettingsManager* mgr) : id(id), mgr(mgr) {}
+    public:
+        template<typename T>
+        Setting& add(const SetValue& name, T* value, T min, T max);
+        Setting& add(const SetValue& name, String*);
+        Setting& addFn(const SetValue& name, GetterFn getter, SetterFn setter);
+    };
+    Group group(std::string name);
 
     const std::vector<std::unique_ptr<Setting>>& getSettings() const { return settings_; }
+    const std::vector<std::string>& getGroups() const { return groups_; }
+    const std::string& getGroup(uint8_t id) const { return groups_.at(id); }
 
     bool load(); /// Load settings from config file
     bool save(); /// Saves settings to config file

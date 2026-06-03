@@ -19,8 +19,9 @@ TEST(SettingsViewSimple, BasicShow) {
     SettingsManager mgr;
     int val = 10;
     String sval = "hey";
-    mgr.add("test_val", &val, 0, 100);
-    mgr.add("strval", &sval);
+    auto group = mgr.group("test");
+    group.add("test_val", &val, 0, 100);
+    group.add("strval", &sval);
 
     MockCtrl ctrl(&mgr);
     SettingsView view;
@@ -35,7 +36,8 @@ TEST(SettingsViewSimple, EditValue) {
     fixtures::LvglTestEnv env(240, 135);
     SettingsManager mgr;
     int val = 50;
-    mgr.add("zoom", &val, 0, 100);
+    auto group = mgr.group("test");
+    group.add("zoom", &val, 0, 100);
 
     MockCtrl ctrl(&mgr);
     SettingsView view;

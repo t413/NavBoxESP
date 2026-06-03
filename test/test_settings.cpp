@@ -11,9 +11,10 @@ TEST(SettingsTest, ScalarPointerSettings) {
     bool enabled = false;
     int changeCount = 0;
 
-    auto& sZoom = mgr.add("zoom", &zoom, 1, 20);
-    auto& sBright = mgr.add("bright", &brightness, 0.0f, 1.0f);
-    auto& sEnabled = mgr.add("enabled", &enabled, false, true);
+    auto group = mgr.group("test");
+    auto& sZoom = group.add("zoom", &zoom, 1, 20);
+    auto& sBright = group.add("bright", &brightness, 0.0f, 1.0f);
+    auto& sEnabled = group.add("enabled", &enabled, false, true);
 
     sZoom.onChange([&]() { changeCount++; });
 
@@ -21,6 +22,7 @@ TEST(SettingsTest, ScalarPointerSettings) {
     EXPECT_EQ(sZoom.get().toInt(), 5);
     EXPECT_NEAR(sBright.get().toFloat(), 0.5f, 0.01f);
     EXPECT_EQ(sEnabled.get().toInt(), 0);
+    EXPECT_STREQ(mgr.getGroup(sZoom.group_).c_str(), "test");
 
     // Test Valid Sets
     sZoom.set("10");
@@ -52,13 +54,14 @@ TEST(SettingsTest, CallbackAndManagerLogic) {
     int internalVal = 100;
 
     // Add Callback Setting
-    mgr.addFn("url",
+    auto group = mgr.group("test");
+    group.addFn("url",
         [&]() { return SetValue(url.c_str()); },
         [&](const SetValue& v) { url = v.c_str(); }
     );
 
     // Add Scalar Setting
-    mgr.add("val", &internalVal, 0, 200);
+    group.add("val", &internalVal, 0, 200);
 
     // Test find()
     Setting* sUrl = mgr.find("url");
@@ -91,10 +94,11 @@ TEST(SettingsTest, json) {
     bool enabled = false;
     String strval = "woo";
 
-    mgr.add("zoom", &zoom, 1, 20);
-    mgr.add("bright", &brightness, 0.0f, 1.0f);
-    mgr.add("enabled", &enabled, false, true);
-    mgr.add("strval", &strval);
+    auto group = mgr.group("test");
+    group.add("zoom", &zoom, 1, 20);
+    group.add("bright", &brightness, 0.0f, 1.0f);
+    group.add("enabled", &enabled, false, true);
+    group.add("strval", &strval);
 
     mgr.save();
     fixtures::printfile(path);
@@ -119,8 +123,9 @@ TEST(SettingsTest, PreserveUnknownValues) {
     int zoom = 0;
     float bright = 0.0f;
     SettingsManager mgr(jfile.fn_.c_str());
-    mgr.add("zoom", &zoom, 1, 20);
-    mgr.add("bright", &bright, 0.0f, 1.0f);
+    auto group = mgr.group("test");
+    group.add("zoom", &zoom, 1, 20);
+    group.add("bright", &bright, 0.0f, 1.0f);
 
     // 2. Load - should populate zoom and bright, ignore extra_field
     EXPECT_TRUE(mgr.load());

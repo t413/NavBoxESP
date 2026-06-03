@@ -14,12 +14,13 @@ static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E; //ccd4dc
 static constexpr uint32_t COL_ACCENT     = 0x58A6FF; //58A6FF
 
 void MapView::loadSettings(SettingsManager& mgr) {
-    mgr.addFn("Home Position", [this]() -> SetValue {
+    auto group = mgr.group("map");
+    group.addFn("Home Position", [this]() -> SetValue {
         return geoPointToStr(markerLayer().get(homeMarkerId_).pos);
     }, [this](SetValue v) {
         markerLayer().updatePoint(homeMarkerId_, parseGeoPoint(v));
     });
-    mgr.addFn("Default Start", [this]() -> SetValue {
+    group.addFn("Default Start", [this]() -> SetValue {
         return geoPointToStr(getMap().getCenter());
     }, [this](SetValue v) {
         getMap().setCenter(parseGeoPoint(v));
