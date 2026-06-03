@@ -109,7 +109,7 @@ TEST(SettingsTest, json) {
     enabled = true;
     strval = "boo";
 
-    mgr.load(); //load from file, expect original values
+    mgr.load(false); //load from file, expect original values
     EXPECT_EQ(zoom, 5);
     EXPECT_NEAR(brightness, 0.5f, 0.01f);
     EXPECT_FALSE(enabled);
@@ -128,7 +128,7 @@ TEST(SettingsTest, PreserveUnknownValues) {
     group.add("bright", &bright, 0.0f, 1.0f);
 
     // 2. Load - should populate zoom and bright, ignore extra_field
-    EXPECT_TRUE(mgr.load());
+    EXPECT_TRUE(mgr.load(false));
     EXPECT_EQ(zoom, 12);
     EXPECT_NEAR(bright, 0.75f, 0.01f);
 
