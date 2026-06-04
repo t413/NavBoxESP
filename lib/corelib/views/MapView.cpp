@@ -55,8 +55,13 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     map_.invalidate();
 }
 
-void MapView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = true; }
 void MapView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = false; }
+void MapView::show() {
+    lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN);
+    isActive_ = true;
+    _updateSidebar();
+    map_._updateLayers();
+}
 
 MarkerLayer& MapView::markerLayer() {
     return *(map_.getMarkerLayer());
@@ -120,15 +125,14 @@ void MapView::onKey(uint8_t key) {
                 map_.setCenter(gps_->toPoint());
             break;
         case 'h':
-            if (gps_ && gps_->hasFix()) {
-                GeoPoint p = gps_->toPoint();
-                markerLayer().updatePoint(homeMarkerId_, p);
-            }
+            markerLayer().updatePoint(homeMarkerId_, getMap().getCenter());
+            map_._updateLayers();
             break;
         case 'r':
             if (ctrl_) ctrl_->toggleRecording();
             break;
     }
+    _updateSidebar();
 }
 
 bool MapView::handleBack() {
@@ -194,7 +198,8 @@ void MapView::_createSidebar(lv_obj_t* parent) {
 }
 
 void MapView::_updateSidebar(const TrackPoint* point) {
-    bool fixed = gps_ && point && gps_->hasFix();
+    bool fixed = gps_ && gps_->hasFix();
+    if (!point && fixed) point = &gps_->toPoint();
     float hdop = gps_ ? gps_->hdop() : 99.9f;
     lv_color_t dotColor = fixed ? (hdop < 2.0f ? lv_color_hex(0x3FB950) : lv_color_hex(0xD29922)) : lv_color_hex(0xFF7B72);
     lv_obj_set_style_bg_color(gpsDot_, dotColor, 0);
@@ -216,8 +221,9 @@ void MapView::_updateSidebar(const TrackPoint* point) {
 
     // Distance to marked home
     auto homepoint = homeMarkerId_? markerLayer().get(homeMarkerId_).pos : GeoPoint();
-    if (fixed && homepoint && point) {
-        float d = homepoint.approxDistTo(*point);
+    if (homepoint) {
+        auto topoint = (point && fixed)? *point : getMap().getCenter();
+        float d = homepoint.approxDistTo(topoint);
         if (d > 1000.0f) snprintf(buf, 16, "%.1fkm", d / 1000.0f);
         else snprintf(buf, 16, "%.0fm", d);
         lv_label_set_text(distLabel_, buf);
