@@ -16,6 +16,8 @@ namespace sc { // Settings Constants
     static constexpr uint32_t COL_DIM     = 0x8B949E;
     static constexpr uint32_t FILE_WRITE_DELAY = 5000;
 }
+constexpr int16_t AUTOSAVE_ID = -100;
+
 
 void SettingsView::create(struct _lv_obj_t* parent, ControllerBase* ctrl) {
     ctrl_ = ctrl;
@@ -41,13 +43,13 @@ void SettingsView::create(struct _lv_obj_t* parent, ControllerBase* ctrl) {
     lv_obj_set_style_text_color(headerLabel_, lv_color_hex(sc::COL_ACCENT), 0);
 
     listCont_ = lv_obj_create(root_);
-    lv_obj_set_width(listCont_, LV_PCT(96));
+    lv_obj_set_width(listCont_, LV_PCT(100));
     lv_obj_set_flex_grow(listCont_, 1);
     lv_obj_set_style_bg_opa(listCont_, 0, 0);
     lv_obj_set_style_border_width(listCont_, 0, 0);
     lv_obj_set_flex_flow(listCont_, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_style_pad_row(listCont_, 3, 0);
-    lv_obj_set_style_pad_hor(listCont_, 4, 0);
+    lv_obj_set_style_pad_row(listCont_, 6, 0);
+    lv_obj_set_style_pad_hor(listCont_, 6, 0);
     lv_obj_set_align(listCont_, LV_ALIGN_TOP_MID);
 }
 
@@ -61,109 +63,204 @@ void SettingsView::hide() {
 }
 
 void SettingsView::iterate(bool active) {
-    if (isDirtyTime_ > 0 && (millis() - isDirtyTime_) > sc::FILE_WRITE_DELAY) {
-        ctrl_->getSetMgr()->save();
-        isDirtyTime_ = 0;
+    if (isDirtyTime_ > 0) {
+        uint32_t elapsed = millis() - isDirtyTime_;
+        if (autosaveEnabled_ && elapsed > sc::FILE_WRITE_DELAY) {
+            saveSettings();
+        }
+        // Periodically refresh the autosave row if visible to show the countdown
+        for (int i = 0; i < visibleRows_; i++)
+            if (rowdata_.at(i).groupId_ == AUTOSAVE_ID)
+                _refreshRowValue(rowdata_.at(i), false);
     }
 }
 
+void SettingsView::setGroup(int gid) {
+    _stopEdit(false);
+    currentGroup_ = gid;
+    focusedIdx_ = 0;
+    _populate();
+}
+
 void SettingsView::onKey(uint8_t key) {
-    if (key == ctrlbtns::KEY_ARROW_UP) {
-        focusedIdx_ = (focusedIdx_ > 0) ? focusedIdx_ - 1 : visibleRows_ - 1;
-        _updateFocus();
-    } else if (key == ctrlbtns::KEY_ARROW_DOWN) {
-        if (currentGroup_ >= 0 && focusedIdx_ >= 0)
-            _stopEdit(false); //cancel edit first
-        focusedIdx_ = (focusedIdx_ < visibleRows_ - 1) ? focusedIdx_ + 1 : 0;
-        _updateFocus();
-    } else if (key == ctrlbtns::KEY_ARROW_LEFT || key == ctrlbtns::KEY_ARROW_RIGHT) {
-        if (currentGroup_ >= 0 && focusedIdx_ >= 0) {
-            _adjustValue(focusedIdx_, key == ctrlbtns::KEY_ARROW_RIGHT);
+    RowData& row = rowdata_.at(focusedIdx_ % visibleRows_);
+    if (key == ctrlbtns::KEY_ARROW_UP || key == ctrlbtns::KEY_ARROW_DOWN) {
+        if (!isEditing_) {
+            focusedIdx_ = (focusedIdx_ + (key == ctrlbtns::KEY_ARROW_DOWN ? 1 : -1) + visibleRows_) % visibleRows_;
+            _updateFocus();
         }
+    } else if (key == ctrlbtns::KEY_ARROW_LEFT || key == ctrlbtns::KEY_ARROW_RIGHT) {
+        _adjustValue(focusedIdx_, key == ctrlbtns::KEY_ARROW_RIGHT); //checks for setting
     } else if (key == ctrlbtns::KEY_RETURN) {
-        if (currentGroup_ < 0) {
-            currentGroup_ = rowdata_[focusedIdx_].groupId;
-            focusedIdx_ = 0;
-            editingIdx_ = -1;
-            _populate();
-        } else if (editingIdx_ < 0) {
-            _startEdit(focusedIdx_, true); // Enter starts edit at end
-        } else {
-            _stopEdit(true);
+        if (row.setting_) {
+            if (isEditing_) _stopEdit(true);
+            else _startEdit(focusedIdx_, true);
+        } else if (row.groupId_ >= 0) {
+            MAP_LOG("group ENTER [%d]", row.groupId_);
+            setGroup(row.groupId_);
+        } else if (row.groupId_ == AUTOSAVE_ID) {
+            MAP_LOG("toggle autosave ENTER");
+            autosaveEnabled_ = !autosaveEnabled_;
+            if (autosaveEnabled_) saveSettings();
+            _refreshRowValue(row, false);
         }
     } else if (key == ctrlbtns::KEY_DELETE) {
-        if (editingIdx_ >= 0 && editBuffer_.length()) {
+        if (isEditing_ && editBuffer_.length()) {
             editBuffer_.pop_back();
-            _refreshRowValue(editingIdx_);
+            _refreshRowValue(row, true);
         }
-    } else if (key >= ' ' && key <= '~') {
-        if (currentGroup_ >= 0) {
-            if (editingIdx_ < 0)
+    } else if (key >= ' ' && key <= '~') { //text entry!
+        if (row.setting_) {
+            if (!isEditing_)
                 _startEdit(focusedIdx_, false); // Direct typing replaces contents
             editBuffer_ += (char)key;
-            _refreshRowValue(editingIdx_);
+            _refreshRowValue(row, true);
         }
     }
 }
 
 bool SettingsView::handleBack() {
-    if (editingIdx_ >= 0) {
-        _stopEdit(false);
-        return true;
-    }
-    if (currentGroup_ >= 0) {
-        currentGroup_ = -1;
-        focusedIdx_ = 0;
-        editingIdx_ = -1;
-        _populate();
-        return true;
-    }
-    return false;
+    if (isEditing_) {
+        _stopEdit(false); //esc hit while editing? cancel
+    } else if (currentGroup_ >= 0) {
+        setGroup(-1); //in a group? go home
+    } else { return false; }
+    return true;
 }
 
 void SettingsView::_populate() {
     auto* mgr = ctrl_->getSetMgr();
     size_t rowIdx = 0;
 
-    if (currentGroup_ < 0) {
+    if (currentGroup_ <= HOMEPAGE_GROUP) {
         lv_label_set_text(headerLabel_, "Settings");
-        auto& groups = mgr->getGroups();
-        for (size_t i = 0; i < groups.size(); ++i) {
-            _updateRow(rowIdx++, groups[i].c_str(), nullptr, (int)i);
-        }
-    } else {
-        lv_label_set_text(headerLabel_, mgr->getGroup(currentGroup_).c_str());
         auto& settings = mgr->getSettings();
-        for (auto& s : settings) {
-            if (s->group_ == currentGroup_) {
-                _updateRow(rowIdx++, s->key_.c_str(), s.get(), -1);
-            }
-        }
+        // 1. add all settings from the first group (Group 0)
+        for (auto& setting : settings)
+            if (setting->group_ == 0)
+                _setupRow(rowIdx++, setting.get());
+
+        // 2. list all other groups
+        auto& groups = mgr->getGroups();
+        for (size_t i = 1; i < groups.size(); ++i)
+            _setupRow(rowIdx++, groups[i], (int)i);
+
+        // 3. Autosave button
+        _setupRow(rowIdx++, "Autosave", AUTOSAVE_ID);
+    } else if (currentGroup_ >= 0) {
+        std::string title = "Settings: " + mgr->getGroup(currentGroup_);
+        lv_label_set_text(headerLabel_, title.c_str());
+        auto& settings = mgr->getSettings();
+        for (auto& setting : settings)
+            if (setting->group_ == currentGroup_)
+                _setupRow(rowIdx++, setting.get());
     }
     visibleRows_ = rowIdx;
+    _updateFocus(); //hides/shows rows
+}
 
-    // Hide unused rows
-    for (size_t i = rowIdx; i < rowdata_.size(); ++i) {
-        lv_obj_add_flag(rowdata_[i].container, LV_OBJ_FLAG_HIDDEN);
+void SettingsView::_addBlankRow() {
+    rowdata_.push_back(RowData());
+    rowdata_.back().create(listCont_);
+}
+
+void SettingsView::_setupRow(int idx, Setting* setting) {
+    if (idx >= (int)rowdata_.size()) {
+        _addBlankRow();
     }
+    RowData& row = rowdata_.at(idx);
+    row.setup(setting);
+    _refreshRowValue(row, false);
+}
 
+void SettingsView::_setupRow(int idx, std::string key, int groupid) {
+    if (idx >= (int)rowdata_.size()) {
+        _addBlankRow();
+    }
+    RowData& row = rowdata_.at(idx);
+    row.setup(key, ">", groupid);
+    _refreshRowValue(row, false);
+}
+
+void SettingsView::_updateFocus() {
+    for (int i = 0; i < rowdata_.size(); i++) {
+        auto& row = rowdata_.at(i);
+        if (row.setHidden(i >= visibleRows_)) continue; //skip the rest
+        bool focused = (i == focusedIdx_);
+        row.setFocused(focused);
+        row.setActive(focused && isEditing_);
+        if (focused) lv_obj_scroll_to_view(row.container_, LV_ANIM_ON);
+    }
+}
+
+void SettingsView::_startEdit(int idx, bool append) {
+    if (idx < 0 || idx >= visibleRows_) return;
+    auto& row = rowdata_.at(focusedIdx_ % visibleRows_);
+    if (!row.setting_) return;
+    isEditing_ = true;
+    editBuffer_ = append ? row.setting_->get().c_str() : "";
     _updateFocus();
 }
 
-void SettingsView::_updateRow(int idx, const char* name, Setting* s, int g) {
-    if (idx >= (int)rowdata_.size()) {
-        _addRow();
+void SettingsView::_stopEdit(bool save) {
+    if (!isEditing_) return;
+    auto& row = rowdata_.at(focusedIdx_ % visibleRows_);
+    if (save && row.setting_) {
+        MAP_LOG("set:stop [%d] -> %s (len %d)", focusedIdx_, editBuffer_.c_str(), (int)editBuffer_.length());
+        String newv = editBuffer_.length() == 0 ? String() : String(editBuffer_.c_str());
+        row.setting_->set(newv);
+        isDirtyTime_ = millis();
     }
-    RowData& rd = rowdata_.at(idx);
-    rd.setting = s;
-    rd.groupId = g;
-    lv_label_set_text(rd.label, name);
-    _refreshRowValue(idx);
-    lv_obj_clear_flag(rd.container, LV_OBJ_FLAG_HIDDEN);
+    isEditing_ = false;
+    editBuffer_.clear();
+    _updateFocus();
+    _refreshRowValue(row, false);
 }
 
-void SettingsView::_addRow() {
-    lv_obj_t* row = lv_obj_create(listCont_);
+void SettingsView::_adjustValue(int idx, bool right) {
+    if (idx < 0 || idx >= visibleRows_) return;
+    auto& row = rowdata_.at(focusedIdx_ % visibleRows_);
+    if (!row.setting_ || !row.setting_->isNum_) return;
+
+    float bump = row.setting_->getAdjBump();
+    float current = row.setting_->get().toFloat();
+    current += right ? bump : -bump;
+
+    row.setting_->set(SetValue(current));
+    isDirtyTime_ = millis();
+    _refreshRowValue(row, false);
+}
+
+void SettingsView::_refreshRowValue(RowData& row, bool isEditing) {
+    std::string txt = "";
+    uint32_t color = sc::COL_ACCENT;
+
+    if (isEditing) {
+        txt = (editBuffer_.length() == 0) ? ".." : editBuffer_;
+    } else if (row.groupId_ == AUTOSAVE_ID) { // Autosave row
+        if (!autosaveEnabled_) {
+            txt = "OFF";
+            color = sc::COL_DIM;
+        } else if (isDirtyTime_ == 0) {
+            txt = "saved";
+        } else {
+            int sec = (int)((sc::FILE_WRITE_DELAY - (millis() - isDirtyTime_)) / 1000);
+            txt = std::to_string(std::max(0, sec)) + "s";
+        }
+    } else { //setting or group
+        txt = row.setting_ ? row.setting_->get().c_str() : ">";
+        if (!row.setting_) color = sc::COL_DIM;
+    }
+    row.setValue(txt.c_str(), color);
+}
+
+void SettingsView::saveSettings() {
+    ctrl_->getSetMgr()->save();
+    isDirtyTime_ = 0;
+}
+
+void SettingsView::RowData::create(struct _lv_obj_t* parent) {
+    lv_obj_t* row = lv_obj_create(parent);
     lv_obj_set_width(row, LV_PCT(100));
     lv_obj_set_height(row, LV_SIZE_CONTENT);
     lv_obj_set_style_pad_ver(row, 4, 0);
@@ -174,84 +271,41 @@ void SettingsView::_addRow() {
     lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_bg_color(row, lv_color_hex(sc::COL_ROW), 0);
     lv_obj_set_style_border_color(row, lv_color_hex(sc::COL_BORDER), 0);
+    container_ = row;
 
-    lv_obj_t* nl = lv_label_create(row);
-    lv_obj_set_style_text_font(nl, &lv_font_montserrat_10, 0);
-    lv_obj_set_style_text_color(nl, lv_color_hex(sc::COL_TEXT), 0);
+    label_ = lv_label_create(row);
+    lv_obj_set_style_text_font(label_, &lv_font_montserrat_10, 0);
+    lv_obj_set_style_text_color(label_, lv_color_hex(sc::COL_TEXT), 0);
 
-    lv_obj_t* vl = lv_label_create(row);
-    lv_obj_set_style_text_font(vl, &lv_font_montserrat_10, 0);
-
-    RowData rd(nullptr, -1);
-    rd.container = row;
-    rd.label = nl;
-    rd.value = vl;
-    rowdata_.push_back(rd);
+    value_ = lv_label_create(row);
+    lv_obj_set_style_text_font(value_, &lv_font_montserrat_10, 0);
 }
 
-void SettingsView::_updateFocus() {
-    for (int i = 0; i < visibleRows_; ++i) {
-        if (i == focusedIdx_) {
-            lv_obj_set_style_bg_color(rowdata_[i].container, lv_color_hex(sc::COL_ROW_SEL), 0);
-            lv_obj_scroll_to_view(rowdata_[i].container, LV_ANIM_ON);
-        } else {
-            lv_obj_set_style_bg_color(rowdata_[i].container, lv_color_hex(sc::COL_ROW), 0);
-        }
-    }
+void SettingsView::RowData::setup(Setting* setting) {
+    setting_ = setting;
+    groupId_ = -1;
+    lv_label_set_text(label_, setting->key_.c_str());
 }
 
-void SettingsView::_startEdit(int idx, bool append) {
-    if (idx < 0 || idx >= visibleRows_) return;
-    Setting* s = rowdata_[idx].setting;
-    if (!s) return;
-    editingIdx_ = idx;
-    editBuffer_ = append ? s->get().c_str() : "";
-    lv_obj_set_style_border_color(rowdata_[idx].container, lv_color_hex(sc::COL_ACCENT), 0);
+void SettingsView::RowData::setup(std::string key, std::string value, int groupid) {
+    setting_ = nullptr;
+    groupId_ = groupid;
+    lv_label_set_text(label_, key.c_str());
+    lv_label_set_text(value_, value.c_str());
 }
 
-void SettingsView::_stopEdit(bool save) {
-    if (editingIdx_ < 0) return;
-    if (save) {
-        MAP_LOG("set:stop [%d] -> %s (len %d)", editingIdx_, editBuffer_.c_str(), (int)editBuffer_.length());
-        Setting* s = rowdata_[editingIdx_].setting;
-        String newv = editBuffer_.length() == 0 ? String() : String(editBuffer_.c_str());
-        s->set(newv);
-        isDirtyTime_ = millis();
-    }
-    auto idx = editingIdx_; //backup
-    editingIdx_ = -1;
-    lv_obj_set_style_border_color(rowdata_[idx].container, lv_color_hex(sc::COL_BORDER), 0);
-    _refreshRowValue(idx);
+void SettingsView::RowData::setFocused(bool focused) {
+    lv_obj_set_style_bg_color(container_, lv_color_hex(focused? sc::COL_ROW_SEL : sc::COL_ROW), 0);
 }
-
-void SettingsView::_adjustValue(int idx, bool right) {
-    if (idx < 0 || idx >= visibleRows_) return;
-    Setting* s = rowdata_[idx].setting;
-    if (!s || !s->isNum_) return;
-
-    float bump = s->getAdjBump();
-    float current = s->get().toFloat();
-    current += right ? bump : -bump;
-
-    s->set(SetValue(current));
-    isDirtyTime_ = millis();
-    _refreshRowValue(idx);
+void SettingsView::RowData::setActive(bool active) {
+    lv_obj_set_style_border_color(container_, lv_color_hex(active? sc::COL_ACCENT : sc::COL_BORDER), 0);
 }
-
-void SettingsView::_refreshRowValue(int idx) {
-    if (idx < 0 || idx >= visibleRows_) return;
-
-    std::string txt = "";
-    uint32_t color = sc::COL_ACCENT;
-
-    if (idx == editingIdx_) {
-        txt = (editBuffer_.length() == 0) ? ".." : editBuffer_;
-    } else {
-        Setting* s = rowdata_[idx].setting;
-        txt = s ? s->get().c_str() : ">";
-        if (!s) color = sc::COL_DIM;
-    }
-
-    lv_label_set_text(rowdata_[idx].value, txt.c_str());
-    lv_obj_set_style_text_color(rowdata_[idx].value, lv_color_hex(color), 0);
+bool SettingsView::RowData::setHidden(bool hide) {
+    if (hide) lv_obj_add_flag(container_, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(container_, LV_OBJ_FLAG_HIDDEN);
+    return hide;
+}
+void SettingsView::RowData::setValue(const char* value, uint32_t color) {
+    lv_label_set_text(value_, value);
+    lv_obj_set_style_text_color(value_, lv_color_hex(color), 0);
 }
