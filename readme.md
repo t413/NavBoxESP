@@ -4,7 +4,7 @@ Portable offline GPS navigation with the $30 M5 Cardputer
 
 [![Top Language](https://img.shields.io/github/languages/top/t413/NavBoxESP?style=flat-square)](https://github.com/t413/NavBoxESP)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green?style=flat-square)](https://github.com/t413/NavBoxESP/blob/main/LICENSE)
-![Tests](https://img.shields.io/github/actions/workflow/status/t413/NavBoxESP/ci.yaml?style=flat-square)
+![Tests](https://img.shields.io/github/actions/workflow/status/t413/NavBoxESP/platformio.yaml?style=flat-square)
 
 <p align="center">
   <a href="https://t413.com/p/projects/NavBox/heart-small.gif"><img src="https://t413.com/p/projects/NavBox/heart-small.gif" alt="maps in action"></a>
