@@ -118,7 +118,8 @@ TEST(SettingsTest, json) {
 }
 
 TEST(SettingsTest, PreserveUnknownValues) {
-    fixtures::TmpFileHelper jfile("{\"zoom\": 12, \"extra_field\": \"keep_me\", \"bright\": 0.75}", "jsonfile");
+    fixtures::TmpFileHelper jfile("{\"test\": {\"zoom\": 12, \"bright\": 0.75}, \"extra_field\": \"keep_me\"}", "jsonfile");
+    fixtures::printfile(jfile.fn_.c_str());
 
     int zoom = 0;
     float bright = 0.0f;

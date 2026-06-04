@@ -118,19 +118,17 @@ bool SettingsManager::load(bool lateOnly) {
         return false;
     }
 
-    JsonObject root = doc.as<JsonObject>();
-    for (JsonPair kv : root) {
-        Setting* s = find(kv.key().c_str());
-        if (s) {
-            if (s->late_ != lateOnly) continue;
-            JsonVariant v = kv.value();
-            if        (v.is<float>()) { s->set(SetValue(v.as<float>()));
-            } else if (v.is<int>())   { s->set(SetValue(v.as<int>()));
-            } else { s->set(v.as<const char*>()); } //string
-            const auto res = s->get();
-            MAP_LOG("setting loaded %s -> %s", kv.key().c_str(), res.c_str());
-        } else {
-            MAP_LOG("setting missing from config: %s", kv.key().c_str());
+    for (JsonPair gkv : doc.as<JsonObject>()) {
+        JsonObject gObj = gkv.value().as<JsonObject>();
+        for (JsonPair kv : gObj) {
+            Setting* s = find(kv.key().c_str());
+            if (s && s->late_ == lateOnly) {
+                JsonVariant v = kv.value();
+                if (v.is<float>()) s->set(SetValue(v.as<float>()));
+                else if (v.is<int>()) s->set(SetValue(v.as<int>()));
+                else s->set(v.as<const char*>());
+                MAP_LOG("setting loaded [%s] %s -> %s", gkv.key().c_str(), kv.key().c_str(), s->get().c_str());
+            }
         }
     }
     return true;
@@ -143,16 +141,14 @@ bool SettingsManager::save() {
         deserializeJson(doc, fileRead);
         fileRead.close();
     }
-    // Update or add current settings
+    // Build hierarchical JSON: { "groupName": { "key": value } }
     for (const auto& setting : settings_) {
-        const SetValue& key = setting->getKey();
-        SetValue value = setting->get();
-        if (setting->isNum_) {
-            doc[key.c_str()] = value.toFloat();
-        } else {
-            doc[key.c_str()] = value.c_str();
-        }
+        const char* gName = groups_[setting->group_].c_str();
+        const char* key = setting->getKey().c_str();
+        if (setting->isNum_) doc[gName][key] = setting->get().toFloat();
+        else doc[gName][key] = setting->get().c_str();
     }
+
     if (auto file = SD.open(configPath_.c_str(), "w")) {
         serializeJsonPretty(doc, file);
         file.close();

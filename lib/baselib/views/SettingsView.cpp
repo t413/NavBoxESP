@@ -69,12 +69,12 @@ void SettingsView::iterate(bool active) {
 
 void SettingsView::onKey(uint8_t key) {
     if (key == ctrlbtns::KEY_ARROW_UP) {
-        focusedIdx_ = (focusedIdx_ > 0) ? focusedIdx_ - 1 : (int)rowdata_.size() - 1;
+        focusedIdx_ = (focusedIdx_ > 0) ? focusedIdx_ - 1 : visibleRows_ - 1;
         _updateFocus();
     } else if (key == ctrlbtns::KEY_ARROW_DOWN) {
         if (currentGroup_ >= 0 && focusedIdx_ >= 0)
             _stopEdit(false); //cancel edit first
-        focusedIdx_ = (focusedIdx_ < (int)rowdata_.size() - 1) ? focusedIdx_ + 1 : 0;
+        focusedIdx_ = (focusedIdx_ < visibleRows_ - 1) ? focusedIdx_ + 1 : 0;
         _updateFocus();
     } else if (key == ctrlbtns::KEY_ARROW_LEFT || key == ctrlbtns::KEY_ARROW_RIGHT) {
         if (currentGroup_ >= 0 && focusedIdx_ >= 0) {
@@ -140,6 +140,7 @@ void SettingsView::_populate() {
             }
         }
     }
+    visibleRows_ = rowIdx;
 
     // Hide unused rows
     for (size_t i = rowIdx; i < rowdata_.size(); ++i) {
@@ -189,7 +190,7 @@ void SettingsView::_addRow() {
 }
 
 void SettingsView::_updateFocus() {
-    for (int i = 0; i < (int)rowdata_.size(); ++i) {
+    for (int i = 0; i < visibleRows_; ++i) {
         if (i == focusedIdx_) {
             lv_obj_set_style_bg_color(rowdata_[i].container, lv_color_hex(sc::COL_ROW_SEL), 0);
             lv_obj_scroll_to_view(rowdata_[i].container, LV_ANIM_ON);
@@ -200,7 +201,7 @@ void SettingsView::_updateFocus() {
 }
 
 void SettingsView::_startEdit(int idx, bool append) {
-    if (idx < 0 || idx >= (int)rowdata_.size()) return;
+    if (idx < 0 || idx >= visibleRows_) return;
     Setting* s = rowdata_[idx].setting;
     if (!s) return;
     editingIdx_ = idx;
@@ -211,8 +212,10 @@ void SettingsView::_startEdit(int idx, bool append) {
 void SettingsView::_stopEdit(bool save) {
     if (editingIdx_ < 0) return;
     if (save) {
+        MAP_LOG("set:stop [%d] -> %s (len %d)", editingIdx_, editBuffer_.c_str(), (int)editBuffer_.length());
         Setting* s = rowdata_[editingIdx_].setting;
-        s->set(editBuffer_.c_str());
+        String newv = editBuffer_.length() == 0 ? String() : String(editBuffer_.c_str());
+        s->set(newv);
         isDirtyTime_ = millis();
     }
     auto idx = editingIdx_; //backup
@@ -222,7 +225,7 @@ void SettingsView::_stopEdit(bool save) {
 }
 
 void SettingsView::_adjustValue(int idx, bool right) {
-    if (idx < 0 || idx >= (int)rowdata_.size()) return;
+    if (idx < 0 || idx >= visibleRows_) return;
     Setting* s = rowdata_[idx].setting;
     if (!s || !s->isNum_) return;
 
@@ -236,7 +239,7 @@ void SettingsView::_adjustValue(int idx, bool right) {
 }
 
 void SettingsView::_refreshRowValue(int idx) {
-    if (idx < 0 || idx >= (int)rowdata_.size()) return;
+    if (idx < 0 || idx >= visibleRows_) return;
 
     std::string txt = "";
     uint32_t color = sc::COL_ACCENT;
