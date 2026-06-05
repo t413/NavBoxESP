@@ -2,3 +2,5 @@
 .pio
 .vscode
 /testoutputs/
+/tiles/
+/lib/staticfiles/basetiles.cpp

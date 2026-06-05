@@ -4,6 +4,7 @@
 #include <SD.h>
 #include <lvgl.h>
 #include <navboxlib/log.h>
+#include <basetilewriter.h>
 #include "controller.h"
 #include "version.h"
 
@@ -36,6 +37,7 @@ void setup() {
         // g_state.sdMounted = true;
         // SD.mkdir(GPX_ROOT);
         MAP_LOG("[SD] Mounted. size %dm type %d", SD.cardSize()/1000000, SD.cardType());
+        ensureBaseTilesOnSD(BASEDIR_TILES);
     } else {
         MAP_LOG("[SD] Not found — tile/GPX features disabled");
     }

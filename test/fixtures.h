@@ -9,7 +9,8 @@ namespace fixtures {
 std::string fmtstr(const char* fmt, ... );
 std::string basename(const std::string& path);
 std::string testname();
-std::string cwd();
+std::filesystem::path cwd();
+std::filesystem::path testOutdir();
 void printfile(const char* fn);
 
 void draw_lvgl_png(lv_disp_drv_t* drv, const char* path);
@@ -39,7 +40,7 @@ struct LvglTestEnv {
     void reset(uint16_t width=0, uint16_t height=0);
 
     void draw();
-    std::filesystem::path outdir() const;
+    static std::filesystem::path outdir();
     void save(std::string suffix="_canvas");
     void clearfiles();
 };

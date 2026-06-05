@@ -29,8 +29,12 @@ std::string testname() {
     return string(tst->test_suite_name()) + "." + tst->name();
 }
 
-std::string cwd() {
+std::filesystem::path cwd() {
     return std::filesystem::current_path();
+}
+
+std::filesystem::path testOutdir() {
+    return cwd() / "testoutputs";
 }
 
 void printfile(const char* fn) {
@@ -152,8 +156,8 @@ void LvglTestEnv::draw() {
     lv_refr_now(disp_);
 }
 
-filesystem::path LvglTestEnv::outdir() const {
-    return filesystem::current_path() / "testoutputs";
+filesystem::path LvglTestEnv::outdir() {
+    return testOutdir();
 }
 
 void LvglTestEnv::save(std::string suffix) {

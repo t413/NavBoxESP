@@ -52,7 +52,7 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     dotMarkerId_ = lyr.add(Marker({}, map_.dotsize_, map_.colAccent_)); //second to be on top
 
     _updateSidebar();
-    map_.invalidate();
+    map_.setZoom(12);
 }
 
 void MapView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = false; }
