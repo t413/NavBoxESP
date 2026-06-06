@@ -5,15 +5,6 @@
 #include "fixtures.h"
 #include <lvgl.h>
 
-struct MockCtrl : public ControllerBase {
-    SettingsManager* mgr;
-    MockCtrl(SettingsManager* m) : mgr(m) {}
-    _lv_obj_t* getOverlayRoot() override { return nullptr; }
-    void setOverlay(ViewBase*) override {}
-    const SettingsManager* getSetMgr() const override { return mgr; }
-    SettingsManager* getSetMgr() override { return mgr; }
-};
-
 TEST(SettingsViewSimple, BasicShow) {
     fixtures::LvglTestEnv env(240, 135);
     SettingsManager mgr;
@@ -28,7 +19,7 @@ TEST(SettingsViewSimple, BasicShow) {
     auto g1 = mgr.group("advanced");
     g1.add("Server", &sval);
 
-    MockCtrl ctrl(&mgr);
+    fixtures::MockCtrl ctrl(&mgr, &env);
     SettingsView view;
     view.create(env.base_, &ctrl);
     view.show();
@@ -44,7 +35,7 @@ TEST(SettingsViewSimple, EditValue) {
     auto group = mgr.group("basic");
     group.add("zoom", &val, 0, 100).setAdjBump(1);
 
-    MockCtrl ctrl(&mgr);
+    fixtures::MockCtrl ctrl(&mgr, &env);
     SettingsView view;
     view.create(env.base_, &ctrl);
     view.show();

@@ -3,6 +3,7 @@
 #include <vector>
 #include <lvgl.h>
 #include <filesystem>
+#include <ControllerBase.h>
 
 namespace fixtures {
 
@@ -43,6 +44,20 @@ struct LvglTestEnv {
     static std::filesystem::path outdir();
     void save(std::string suffix="_canvas");
     void clearfiles();
+};
+
+struct MockCtrl : public ControllerBase {
+    SettingsManager* mgr_;
+    LvglTestEnv* env_;
+    MockCtrl(SettingsManager* m, LvglTestEnv* env=nullptr) : mgr_(m), env_(env) {}
+    _lv_obj_t* getOverlayRoot() override { return nullptr; }
+    void setOverlay(ViewBase*) override {}
+    const SettingsManager* getSetMgr() const override { return mgr_; }
+    SettingsManager* getSetMgr() override { return mgr_; }
+    virtual std::pair<uint16_t, uint16_t> getDispSize() const override { return std::make_pair(env_? env_->width_ : 0, env_? env_->height_ : 0); }
+    virtual uint8_t getBatt() const override { return 80; }
+    virtual const char* gitVersion() const override { return "mock"; }
+    virtual void setBrightness(uint8_t) override { }
 };
 
 } //fixtures

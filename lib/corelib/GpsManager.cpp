@@ -2,7 +2,10 @@
 #include <navboxlib/log.h>
 #include <Arduino.h>
 #include <TinyGPSPlus.h>
+#include <vector>
+#ifdef USE_M5
 #include <M5Unified.h>
+#endif
 
 GpsManager::GpsManager() {
     _gps = new TinyGPSPlus();
@@ -12,19 +15,21 @@ GpsManager::~GpsManager() {
     delete _gps;
 }
 
-bool GpsManager::begin(HardwareSerial& port) {
+bool GpsManager::begin(int rx, int tx, uint32_t baud, HardwareSerial& port) {
     std::vector<std::pair<int, int>> probes;
+    if (rx >= 0 && tx >= 0) probes = {{rx, tx}};
+#ifdef USE_M5
     auto brd = M5.getBoard();
-
     if (brd == m5gfx::board_t::board_M5Cardputer || brd == m5gfx::board_t::board_M5CardputerADV) {
-        probes = {{1, 2}, {13, 15}}; //grove, then lora cap
+        probes.insert(probes.end(), {{1, 2}, {13, 15}}); // grove, then lora cap
     } else {
-        probes = {{1, 2}}; // Default Grove
+        probes.push_back({1, 2}); // Default Grove
     }
+#endif
 
     MAP_LOG("gps probing %d pairs", probes.size());
     for (auto& p : probes) {
-        if (_probe(p.first, p.second, 115200, port)) {
+        if (_probe(p.first, p.second, baud, port)) {
             MAP_LOG("gps found GPS on [%d,%d]", p.first, p.second);
             _serial = &port;
             return true;

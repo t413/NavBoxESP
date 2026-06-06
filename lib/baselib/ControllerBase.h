@@ -31,4 +31,9 @@ public:
 
     virtual const SettingsManager* getSetMgr() const = 0;
     virtual SettingsManager* getSetMgr() = 0;
+
+    virtual std::pair<uint16_t, uint16_t> getDispSize() const = 0;
+    virtual uint8_t getBatt() const = 0; /// battery percentage
+    virtual const char* gitVersion() const = 0;
+    virtual void setBrightness(uint8_t) = 0;
 };

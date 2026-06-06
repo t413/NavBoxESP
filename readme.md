@@ -8,6 +8,7 @@ Portable offline GPS navigation with the $30 M5 Cardputer
 
 <p align="center">
   <a href="https://t413.com/p/projects/NavBox/heart-small.gif"><img src="https://t413.com/p/projects/NavBox/heart-small.gif" alt="maps in action"></a>
+  <a href="https://t413.com/p/projects/NavBox/navbox_photo.jpeg"><img width="300px" src="https://t413.com/p/projects/NavBox/navbox_photo.jpeg" alt="maps on cardputer"></a>
 </p>
 
 - Ultra-lightweight offline mapping for your M5 Cardputer (more devices coming!)

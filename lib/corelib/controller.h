@@ -17,6 +17,7 @@ public:
     Controller(const char* gitVersion);
 
     void setup(_lv_obj_t* parent);
+    void setupGPS(int rx, int tx, uint32_t baud, HardwareSerial& uart);
     void iterate(uint32_t now);
     void switchView(ViewID id);
     _lv_obj_t* getOverlayRoot() override { return overlayRoot_; }
@@ -30,8 +31,10 @@ public:
     bool isRecording() const { return recordTrack_.isRecording(); }
     bool loadTrack(const char* path, TrackLog*);
 
-    uint8_t getBatt() const; /// battery percentage
-    const char* gitVersion() const { return version_; }
+    virtual uint8_t getBatt() const override; /// battery percentage
+    virtual void setBrightness(uint8_t) override;
+    virtual const char* gitVersion() const override { return version_; }
+    virtual std::pair<uint16_t, uint16_t> getDispSize() const override;
 
 private:
     void loadSettings(SettingsManager& mgr);

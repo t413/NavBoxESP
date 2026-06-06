@@ -6,8 +6,6 @@
 #include <lvgl.h>
 
 // Local constants to replace Include/Config.h
-static constexpr int SIDEBAR_W = 60;
-static constexpr int SCREEN_H  = 135;
 static constexpr uint32_t COL_SIDEBAR_BG = 0x161B22; //161B22
 static constexpr uint32_t COL_TEXT       = 0xE6EDF3; //E6EDF3
 static constexpr uint32_t COL_TEXT_DIM   = 0x8B949E; //ccd4dc
@@ -30,6 +28,9 @@ void MapView::loadSettings(SettingsManager& mgr) {
 void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     root_ = lv_obj_create(parent);
     ctrl_ = (Controller*)ctrl;
+    const auto [dispW, dispH] = ctrl->getDispSize();
+    int sidebarW = (dispW > 240) ? 70 : 60;
+
     lv_obj_set_size(root_, LV_PCT(100), LV_PCT(100));
     lv_obj_set_style_pad_all(root_, 0, 0);
     lv_obj_set_style_border_width(root_, 0, 0);
@@ -37,7 +38,7 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 
     // Initialize Map on the left side
-    map_.begin(root_, 240 - SIDEBAR_W, 135, BASEDIR_TILES "/%d/%d/%d.png");
+    map_.begin(root_, dispW - sidebarW, dispH, BASEDIR_TILES "/%d/%d/%d.png");
     map_.setXY(0, 0);
 
     _createSidebar(root_);
@@ -155,9 +156,12 @@ void MapView::setCenter(const GeoPoint &p) {
 }
 
 void MapView::_createSidebar(lv_obj_t* parent) {
+    const auto [dispW, dispH] = ctrl_->getDispSize();
+    int sidebarW = dispW - map_.getWidth();
+
     sidebar_ = lv_obj_create(parent);
-    lv_obj_set_size(sidebar_, SIDEBAR_W, SCREEN_H);
-    lv_obj_set_pos(sidebar_, 240 - SIDEBAR_W, 0);
+    lv_obj_set_size(sidebar_, sidebarW, dispH);
+    lv_obj_set_pos(sidebar_, map_.getWidth(), 0);
     lv_obj_set_style_bg_color(sidebar_, lv_color_hex(COL_SIDEBAR_BG), 0);
     lv_obj_set_style_border_side(sidebar_, LV_BORDER_SIDE_LEFT, 0);
     lv_obj_set_style_border_color(sidebar_, lv_color_hex(0x2a3040), 0);
@@ -165,34 +169,34 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(sidebar_, 0, 0);
     lv_obj_set_scrollbar_mode(sidebar_, LV_SCROLLBAR_MODE_OFF);
 
-    gpsDot_ = _makeDot(sidebar_, 6, 6);
-    satLabel_ = _makeLabel(sidebar_, 16, 2, &lv_font_montserrat_12);
+    gpsDot_ = _makeDot(sidebar_, 4, 6);
+    satLabel_ = _makeLabel(sidebar_, 14, 2, &lv_font_montserrat_12);
     lv_obj_set_style_text_color(satLabel_, lv_color_hex(COL_TEXT), 0);
 
-    battLabel_ = _makeLabel(sidebar_, 38, 2, &lv_font_montserrat_12);
+    battLabel_ = _makeLabel(sidebar_, sidebarW - 24, 2, &lv_font_montserrat_12);
     lv_obj_set_style_text_color(battLabel_, lv_color_hex(COL_TEXT), 0);
 
     speedLabel_ = _makeLabel(sidebar_, 2, 18, &lv_font_montserrat_14);
-    lv_obj_set_width(speedLabel_, SIDEBAR_W - 4);
+    lv_obj_set_width(speedLabel_, sidebarW - 4);
     lv_obj_set_style_text_color(speedLabel_, lv_color_hex(COL_ACCENT), 0);
     lv_obj_set_style_text_align(speedLabel_, LV_TEXT_ALIGN_CENTER, 0);
 
-    _makeDivider(sidebar_, 46);
+    _makeDivider(sidebar_, 44);
     altLabel_ = _makeLabel(sidebar_, 2, 60, &lv_font_montserrat_12);
-    lv_obj_set_width(altLabel_, SIDEBAR_W - 4);
+    lv_obj_set_width(altLabel_, sidebarW - 4);
     lv_obj_set_style_text_align(altLabel_, LV_TEXT_ALIGN_CENTER, 0);
 
-    _makeDivider(sidebar_, 76);
+    _makeDivider(sidebar_, 74);
     distLabel_ = _makeLabel(sidebar_, 2, 90, &lv_font_montserrat_12);
-    lv_obj_set_width(distLabel_, SIDEBAR_W - 4);
+    lv_obj_set_width(distLabel_, sidebarW - 4);
     lv_obj_set_style_text_align(distLabel_, LV_TEXT_ALIGN_CENTER, 0);
 
-    _makeDivider(sidebar_, 106);
-    recDot_ = _makeDot(sidebar_, 6, 112);
-    recLabel_ = _makeLabel(sidebar_, 16, 110, &lv_font_montserrat_10);
+    _makeDivider(sidebar_, 104);
+    recDot_ = _makeDot(sidebar_, 4, 112);
+    recLabel_ = _makeLabel(sidebar_, 14, 110, &lv_font_montserrat_10);
 
     for (int i = 0; i < (int)ViewID::COUNT; i++) {
-        viewDots_[i] = _makeDot(sidebar_, 4 + i * 10, SCREEN_H - 10);
+        viewDots_[i] = _makeDot(sidebar_, 4 + i * 10, dispH - 10);
         lv_obj_set_size(viewDots_[i], 6, 6);
     }
 }
@@ -264,8 +268,9 @@ lv_obj_t* MapView::_makeDot(lv_obj_t* parent, lv_coord_t x, lv_coord_t y) {
 }
 
 void MapView::_makeDivider(lv_obj_t* parent, lv_coord_t y) {
+    lv_coord_t w = lv_obj_get_width(parent);
     lv_obj_t* div = lv_obj_create(parent);
-    lv_obj_set_size(div, SIDEBAR_W - 8, 1);
+    lv_obj_set_size(div, w - 8, 1);
     lv_obj_set_pos(div, 4, y);
     lv_obj_set_style_bg_color(div, lv_color_hex(0x2a3040), 0);
     lv_obj_set_style_border_width(div, 0, 0);

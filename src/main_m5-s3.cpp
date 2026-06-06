@@ -47,6 +47,7 @@ void setup() {
     lv_obj_t* screen = lv_scr_act();
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
     ctrl.setup(screen);
+    ctrl.setupGPS(-1, -1, 115200, Serial1);
 
     lv_task_handler();
     MAP_LOG("Setup complete (free %d) version %s", ESP.getFreeHeap(), GIT_VERSION);

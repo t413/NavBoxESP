@@ -4,7 +4,9 @@
 #include "views/SettingsView.h"
 #include <lvgl.h>
 #include <navboxlib/log.h>
+#ifdef USE_M5
 #include <M5Cardputer.h>
+#endif
 
 Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}
 
@@ -18,8 +20,6 @@ void Controller::setup(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(overlayRoot_, 0, 0);
     lv_obj_set_scrollbar_mode(overlayRoot_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN); // hidden when no modals
-
-    gps_.begin(Serial1);
 
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
@@ -39,13 +39,17 @@ void Controller::setup(lv_obj_t* parent) {
     settingsManager_.load(true); //now load late settings
     switchView(ViewID::MAP);
     lastActivityMs_ = millis();
-    M5.Display.setBrightness(screenBrightness_);
+    setBrightness(screenBrightness_);
+}
+
+void Controller::setupGPS(int rx, int tx, uint32_t baud, HardwareSerial& uart) {
+    gps_.begin(rx, tx, baud, uart);
 }
 
 void Controller::loadSettings(SettingsManager& mgr) {
     auto group = mgr.group("basic");
     group.add("Brightness", &screenBrightness_, (uint8_t) 20, (uint8_t) 255).setAdjBump(20)
-        .onChange([this](){ M5.Display.setBrightness(screenBrightness_); });
+        .onChange([this](){ setBrightness(screenBrightness_); });
     group.add("Dim Time", &screenDimSec_, 0, 600).setAdjBump(10);
 }
 
@@ -82,6 +86,7 @@ void Controller::iterate(uint32_t now) {
 }
 
 void Controller::_processKeys(uint32_t now) {
+#ifdef USE_M5
     M5Cardputer.update();
     auto& kb = M5Cardputer.Keyboard;
     if (kb.isChange()) {
@@ -106,6 +111,25 @@ void Controller::_processKeys(uint32_t now) {
         }
         wakeup(now);
     }
+#endif
+}
+
+void Controller::setBrightness(uint8_t b) {
+    screenBrightness_ = b;
+#ifdef USE_M5
+    M5.Display.setBrightness(b);
+    if (b <= 1) M5.Display.sleep();
+    else if (dimmed_ || sleeping_) M5.Display.wakeup();
+#endif
+}
+
+std::pair<uint16_t, uint16_t> Controller::getDispSize() const {
+#ifdef USE_M5
+    return std::make_pair(M5.Lcd.width(), M5.Lcd.height());
+#else //from lvgl
+    auto def = lv_disp_get_default();
+    return std::make_pair(lv_disp_get_hor_res(def), lv_disp_get_ver_res(def));
+#endif
 }
 
 void Controller::_updateDimming(uint32_t now) {
@@ -113,11 +137,11 @@ void Controller::_updateDimming(uint32_t now) {
     uint32_t idle = (now - lastActivityMs_) / 1000;
     if (!dimmed_ && idle >= (screenDimSec_ - 5)) {
         dimmed_ = true;
-        M5.Display.setBrightness(10); // very dim
+        setBrightness(10); // very dim
     }
     if (idle >= screenDimSec_ && !sleeping_) {
         MAP_LOG("Display sleep after %us idle", idle);
-        M5.Display.sleep();
+        setBrightness(0); //panel off
         sleeping_ = true;
         doLightSleep();
     }
@@ -126,9 +150,8 @@ void Controller::_updateDimming(uint32_t now) {
 void Controller::wakeup(uint32_t now) {
     lastActivityMs_ = now;
     if (dimmed_ || sleeping_) {
+        setBrightness(screenBrightness_);
         dimmed_ = sleeping_ = false;
-        M5.Display.wakeup();
-        M5.Display.setBrightness(screenBrightness_);
         getMapView()->getMap()._updateLayers();
     }
 }
@@ -157,7 +180,11 @@ void Controller::doLightSleep() {
 }
 
 uint8_t Controller::getBatt() const {
+#ifdef USE_M5
     return M5.Power.getBatteryLevel();
+#else
+    return 0; // TODO for t-deck
+#endif
 }
 
 bool Controller::toggleRecording() {

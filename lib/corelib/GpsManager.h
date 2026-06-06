@@ -18,7 +18,7 @@ public:
     uint8_t   satellites() const { return _satellites; }
     uint32_t  epoch()     const { return _epoch; }
 
-    bool begin(HardwareSerial&);
+    bool begin(int rx, int tx, uint32_t baud, HardwareSerial&);
     bool iterate(uint32_t now);
     const TrackPoint& toPoint() const { return _currentPoint; }
 

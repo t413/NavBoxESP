@@ -2,7 +2,6 @@
 #include "../controller.h"
 #include <views/FilesView.h>
 #include <navboxlib/log.h>
-#include <M5Unified.h>
 #include <lvgl.h>
 
 static constexpr uint32_t COL_GREEN = 0x3FB950;
