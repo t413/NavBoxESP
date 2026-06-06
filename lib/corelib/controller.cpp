@@ -6,6 +6,8 @@
 #include <navboxlib/log.h>
 #ifdef USE_M5
 #include <M5Cardputer.h>
+#elif defined(USE_LGFX)
+#include <LovyanGFX.hpp>
 #endif
 
 Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}
@@ -41,6 +43,12 @@ void Controller::setup(lv_obj_t* parent) {
     lastActivityMs_ = millis();
     setBrightness(screenBrightness_);
 }
+
+#ifdef USE_LGFX
+void Controller::setupLgfx(lgfx::LGFX_Device& device) {
+    lgfxDevice_ = &device;
+}
+#endif
 
 void Controller::setupGPS(int rx, int tx, uint32_t baud, HardwareSerial& uart) {
     gps_.begin(rx, tx, baud, uart);
@@ -111,6 +119,12 @@ void Controller::_processKeys(uint32_t now) {
         }
         wakeup(now);
     }
+#else
+    if (!digitalRead(GPIO_NUM_0)) {
+        int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
+        switchView((ViewID)next);
+        wakeup(now);
+    }
 #endif
 }
 
@@ -120,12 +134,20 @@ void Controller::setBrightness(uint8_t b) {
     M5.Display.setBrightness(b);
     if (b <= 1) M5.Display.sleep();
     else if (dimmed_ || sleeping_) M5.Display.wakeup();
+#elif defined(USE_LGFX)
+    if (lgfxDevice_) {
+        lgfxDevice_->setBrightness(b);
+        if (b <= 1) lgfxDevice_->sleep();
+        else if (dimmed_ || sleeping_) lgfxDevice_->wakeup();
+    }
 #endif
 }
 
 std::pair<uint16_t, uint16_t> Controller::getDispSize() const {
 #ifdef USE_M5
     return std::make_pair(M5.Lcd.width(), M5.Lcd.height());
+#elif defined(USE_LGFX)
+    return std::make_pair(lgfxDevice_->width(), lgfxDevice_->height());
 #else //from lvgl
     auto def = lv_disp_get_default();
     return std::make_pair(lv_disp_get_hor_res(def), lv_disp_get_ver_res(def));

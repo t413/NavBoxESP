@@ -8,6 +8,9 @@
 
 class MapView;
 struct _lv_obj_t;
+#ifdef USE_LGFX
+namespace lgfx { inline namespace v1 { class LGFX_Device; } }
+#endif
 
 #define BASEDIR_TILES "/maps/osm"
 #define BASEDIR_TRACKS_REC "/maps/tracks"
@@ -17,6 +20,9 @@ public:
     Controller(const char* gitVersion);
 
     void setup(_lv_obj_t* parent);
+#ifdef USE_LGFX
+    void setupLgfx(lgfx::v1::LGFX_Device&);
+#endif
     void setupGPS(int rx, int tx, uint32_t baud, HardwareSerial& uart);
     void iterate(uint32_t now);
     void switchView(ViewID id);
@@ -47,6 +53,10 @@ private:
     const char* version_ = "v?";
     uint32_t lastActivityMs_ = 0;
     bool dimmed_ = false, sleeping_ = false;
+
+#ifdef USE_LGFX
+    lgfx::v1::LGFX_Device* lgfxDevice_ = nullptr;
+#endif
 
 public:
     SettingsManager settingsManager_;

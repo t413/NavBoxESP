@@ -30,11 +30,12 @@ bool GpsManager::begin(int rx, int tx, uint32_t baud, HardwareSerial& port) {
     MAP_LOG("gps probing %d pairs", probes.size());
     for (auto& p : probes) {
         if (_probe(p.first, p.second, baud, port)) {
-            MAP_LOG("gps found GPS on [%d,%d]", p.first, p.second);
+            MAP_LOG("gps found on [%d,%d]", p.first, p.second);
             _serial = &port;
             return true;
-        }
+        } else MAP_LOG("gps not found on [%d,%d]", p.first, p.second);
     }
+    MAP_LOG("gps not found with %d tests", probes.size());
     return false;
 }
 
