@@ -26,6 +26,17 @@ void Controller::setup(lv_obj_t* parent) {
     lv_obj_set_scrollbar_mode(overlayRoot_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN); // hidden when no modals
 
+    // setup LVGL touch support
+    // lv_indev_drv_t indev_drv;
+    // lv_indev_drv_init(&indev_drv);
+    // indev_drv.type = LV_INDEV_TYPE_POINTER;
+    // indev_drv.read_cb = [](lv_indev_drv_t* drv, lv_indev_data_t* data) {
+    //     data->point.x = g_touch_data.x;
+    //     data->point.y = g_touch_data.y;
+    //     data->state = g_touch_data.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    // };
+    // lv_indev_drv_register(&indev_drv);
+
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
     views_[(int)ViewID::ABOUT] = new AboutView();
@@ -121,8 +132,8 @@ bool Controller::onKey(uint8_t key, uint32_t now) {
         if (cv->onKey(key, now))
             return true;
         // Special function keys mapped to custom codes
-        if (key == '0x0D') cv->onKey(ctrlbtns::KEY_RETURN, now);
-        if (key == '0x08') cv->onKey(ctrlbtns::KEY_DELETE, now);
+        if (key == 0x0D) cv->onKey(ctrlbtns::KEY_RETURN, now);
+        if (key == 0x08) cv->onKey(ctrlbtns::KEY_DELETE, now);
     }
     if (key == 'q') { // Global shortcuts
         handleBack();
@@ -239,14 +250,16 @@ void Controller::doLightSleep() {
         MAP_LOG("light sleeping btn %d", digitalRead(GPIO_NUM_0));
         for (auto input : inputs_) input->onSleep(true);
         auto start = millis();
-        esp_sleep_enable_uart_wakeup(1);  // UART1 = Serial1
-        gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
-        esp_sleep_enable_gpio_wakeup();
-        esp_light_sleep_start();
+        auto ures = esp_sleep_enable_uart_wakeup(1);  // UART1 = Serial1
+        auto gres = gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
+        auto sres = esp_sleep_enable_gpio_wakeup();
+        MAP_LOG("sleep prep %d %d %d", ures, gres, sres);
+        delay(10);
+        auto res = esp_light_sleep_start();
         // we get to here if woken by gpio interrupt or uart
         auto now = millis();
         esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
-        MAP_LOG("light sleep wake after %dms, cause %d btn %d", now - start, cause, digitalRead(GPIO_NUM_0));
+        MAP_LOG("light sleep wake[%d] after %dms, cause %d btn %d", res, now - start, cause, digitalRead(GPIO_NUM_0));
         if (cause == ESP_SLEEP_WAKEUP_GPIO) {
             wakeup(now); break; //we're up!
         } else {

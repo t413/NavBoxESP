@@ -206,6 +206,7 @@ public:
         MAP_LOG("keyboard:bright(%d) [%d,%d,%d]", brightval, r1, r2, r3);
         return true;
     }
+    void onSleep(bool sleeping) override { keyboard_present_ = !sleeping; } //disables kb
 };
 
 class TDeckTouch : public InputBase {
@@ -214,8 +215,6 @@ class TDeckTouch : public InputBase {
     bool lastPressed_ = false;
     uint32_t lastPressChange_ = 0;
     const int pressDebounceMs_ = 40;
-    uint32_t last_ = 0;
-    const int maxUpdateMs_ = 10;
 public:
     bool begin(ControllerBase* ctrl) override {
         InputBase::begin(ctrl);
@@ -234,7 +233,6 @@ public:
     void end() override { }
     bool iterate(uint32_t now) override {
         if (!touch_present_ || !ctrl_) return false;
-        if ((now - last_) < maxUpdateMs_) return true; // too quick
 
         bool pressed = touch_.isPressed();
         const auto& touches = touch_.getTouchPoints();
@@ -242,26 +240,27 @@ public:
         if (pressed && touches.getPointCount() == 0 || (pressed == lastPressed_))
             return true; //no update for us
 
-        if (!pressed) { //often reports no-touches / not-pressed
-            if ((now - lastPressChange_) >= pressDebounceMs_) {
-                lastPressed_ = false;
-                lastPressChange_ = now;
-            } else { return true; } //not enough time gone by yet
-        }
-
-        //TODO multi-touch!
         BaseTouchPoint tp;
         if (touches.hasPoints()) {
+            //TODO multi-touch!
             tp.x = touches[0].x;
             tp.y = touches[0].y;
             tp.pressed = true;
-            ctrl_->onTouch(tp, now);
+        } else { // potential release event
+            if ((now - lastPressChange_) < pressDebounceMs_) {
+                return true; //skip this one
+            }
+            tp.pressed = false;
         }
+        lastPressed_ = pressed;
+        lastPressChange_ = now;
         ctrl_->onTouch(tp, now);
-        last_ = now;
         return true;
     }
-    void onSleep(bool sleeping) override { }
+    void onSleep(bool sleeping) override {
+        if (sleeping) touch_.sleep();
+        else touch_.wakeup();
+    }
 };
 
 static volatile uint32_t s_trackball_up = 0, s_trackball_down = 0;
