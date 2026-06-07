@@ -70,8 +70,10 @@ void Controller::setOverlay(ViewBase* overlay) {
         lv_obj_move_foreground(overlayRoot_); // Bring overlay to front so it renders above views
     } else {
         lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN);
-        overlay_->hide();
-        delete overlay_;
+        if (overlay_) {
+            overlay_->hide();
+            delete overlay_;
+        }
     }
     overlay_ = overlay;
 }
@@ -97,19 +99,35 @@ void Controller::iterate(uint32_t now) {
     }
 }
 
+bool Controller::handleBack() {
+    auto cv = getCurrentView();
+    if (cv && !cv->handleBack()) {
+        if (overlay_) setOverlay(nullptr);
+        else switchView(ViewID::MAP);
+    }
+    return true;
+}
+
 bool Controller::onKey(uint8_t key, uint32_t now) {
     MAP_LOG("Input KEY: 0x%02X ('%c')", key, (key >= 32 && key < 127) ? (char)key : '?');
     if (wakeup(now)) return true; //consume input
     auto cv = getCurrentView();
 
-    if (cv) { // Route to active view
+    if (key == '\t') {
+        nextView();
+    } else if (key == ctrlbtns::KEY_ESC) {
+        handleBack();
+    } else if (cv) { // Forward keys to active view
         if (cv->onKey(key, now))
             return true;
+        // Special function keys mapped to custom codes
+        if (key == '0x0D') cv->onKey(ctrlbtns::KEY_RETURN, now);
+        if (key == '0x08') cv->onKey(ctrlbtns::KEY_DELETE, now);
     }
-    if (key == ctrlbtns::KEY_ESC) { // Global shortcuts
-        switchView(ViewID::MAP);  // Always can escape to map
+    if (key == 'q') { // Global shortcuts
+        handleBack();
     } else if (key == 'p') {
-        switchView((ViewID)(((int)currentView_ + 1) % (int)ViewID::COUNT));
+        nextView();
     }
     return false;
 }
@@ -157,8 +175,7 @@ bool Controller::onScroll(const TrackballDelta& delta, uint32_t now) {
     }
 
     if (delta.pressed && !lastBtn_) {
-        int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
-        switchView((ViewID)next);
+        nextView();
     }
     lastBtn_ = delta.pressed;
     return false;
@@ -275,6 +292,10 @@ bool Controller::loadTrack(const char* path, TrackLog* to) {
 
 ViewBase* Controller::getCurrentView() const {
     return overlay_? overlay_ : views_[(int)currentView_];
+}
+
+void Controller::nextView() {
+    switchView((ViewID)(((int)currentView_ + 1) % (int)ViewID::COUNT));
 }
 
 void Controller::switchView(ViewID id) {

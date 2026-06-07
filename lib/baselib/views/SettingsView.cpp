@@ -17,6 +17,7 @@ namespace sc { // Settings Constants
     static constexpr uint32_t FILE_WRITE_DELAY = 5000;
 }
 constexpr int16_t AUTOSAVE_ID = -100;
+constexpr int16_t EXIT_ID     = -101;
 
 
 void SettingsView::create(struct _lv_obj_t* parent, ControllerBase* ctrl) {
@@ -103,19 +104,20 @@ bool SettingsView::onKey(uint8_t key, uint32_t now) {
             autosaveEnabled_ = !autosaveEnabled_;
             if (autosaveEnabled_) saveSettings();
             _refreshRowValue(row, false);
+        } else if (row.groupId_ == EXIT_ID) {
+            ctrl_->nextView();
         }
     } else if (key == ctrlbtns::KEY_DELETE) {
         if (isEditing_ && editBuffer_.length()) {
             editBuffer_.pop_back();
             _refreshRowValue(row, true);
         }
-    } else if (key >= ' ' && key <= '~') { //text entry!
-        if (row.setting_) {
-            if (!isEditing_)
-                _startEdit(focusedIdx_, false); // Direct typing replaces contents
-            editBuffer_ += (char)key;
-            _refreshRowValue(row, true);
-        }
+    } else if (key >= ' ' && key <= '~' && row.setting_) { //text entry!
+        if (row.setting_->isNum_ && !((key >= '0' && key <= '9') || key == '.' || key == '-')) return false; //not a number
+        if (!isEditing_)
+            _startEdit(focusedIdx_, false); // Direct typing replaces contents
+        editBuffer_ += (char)key;
+        _refreshRowValue(row, true);
     } else return false;
     return true;
 }
@@ -148,6 +150,9 @@ void SettingsView::_populate() {
 
         // 3. Autosave button
         _setupRow(rowIdx++, "Autosave", AUTOSAVE_ID);
+
+        // 3. exit button
+        _setupRow(rowIdx++, "Exit", EXIT_ID);
     } else if (currentGroup_ >= 0) {
         std::string title = "Settings: " + mgr->getGroup(currentGroup_);
         lv_label_set_text(headerLabel_, title.c_str());

@@ -43,11 +43,13 @@ public:
     virtual bool onKey(uint8_t key, uint32_t now) override;
     virtual bool onTouch(const BaseTouchPoint&, uint32_t now) override;
     virtual bool onScroll(const TrackballDelta&, uint32_t now) override;
+    virtual bool handleBack();
 
     virtual uint8_t getBatt() const override; /// battery percentage
     virtual void setBrightness(uint8_t) override;
     virtual const char* gitVersion() const override { return version_; }
     virtual std::pair<uint16_t, uint16_t> getDispSize() const override;
+    virtual void nextView() override;
 
 private:
     void loadSettings(SettingsManager& mgr);

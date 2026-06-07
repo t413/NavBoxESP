@@ -40,6 +40,7 @@ public:
     virtual uint8_t getBatt() const = 0; /// battery percentage
     virtual const char* gitVersion() const = 0;
     virtual void setBrightness(uint8_t) = 0;
+    virtual void nextView() { }
 };
 
 class InputBase {
