@@ -37,7 +37,7 @@ public:
     virtual bool onScroll(const TrackballDelta&, uint32_t now) { return false; }
 
     virtual std::pair<uint16_t, uint16_t> getDispSize() const = 0;
-    virtual uint8_t getBatt() const = 0; /// battery percentage
+    virtual float getBatt() const = 0; /// battery percentage
     virtual const char* gitVersion() const = 0;
     virtual void setBrightness(uint8_t) = 0;
     virtual void nextView() { }
@@ -62,4 +62,12 @@ struct BaseTouchPoint {
 struct TrackballDelta {
     int16_t dx = 0, dy = 0;
     bool pressed = false;
+};
+
+class BattManagerBase {
+public:
+    virtual ~BattManagerBase() = default;
+    virtual void setup() = 0;
+    virtual float getMV() const = 0;
+    virtual float getMVtoPercent(uint16_t mv) const = 0;
 };

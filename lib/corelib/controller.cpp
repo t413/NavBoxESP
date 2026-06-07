@@ -260,7 +260,8 @@ void Controller::doLightSleep() {
     for (auto input : inputs_) input->onSleep(false);
 }
 
-uint8_t Controller::getBatt() const {
+float Controller::getBatt() const {
+    if (battMgr_) return battMgr_->getMVtoPercent(battMgr_->getMV());
 #ifdef USE_M5
     return M5.Power.getBatteryLevel();
 #else

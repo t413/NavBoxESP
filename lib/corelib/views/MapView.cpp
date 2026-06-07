@@ -239,7 +239,7 @@ void MapView::_updateSidebar(const TrackPoint* point) {
     lv_label_set_text(satLabel_, buf);
 
     if (ctrl_) {
-        snprintf(buf, 16, "%d%%", ctrl_->getBatt());
+        snprintf(buf, 16, "%d%%", (uint8_t) ctrl_->getBatt());
         lv_label_set_text(battLabel_, buf);
     }
 

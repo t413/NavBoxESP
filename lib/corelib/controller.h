@@ -45,11 +45,12 @@ public:
     virtual bool onScroll(const TrackballDelta&, uint32_t now) override;
     virtual bool handleBack();
 
-    virtual uint8_t getBatt() const override; /// battery percentage
+    virtual float getBatt() const override; /// battery percentage
     virtual void setBrightness(uint8_t) override;
     virtual const char* gitVersion() const override { return version_; }
     virtual std::pair<uint16_t, uint16_t> getDispSize() const override;
     virtual void nextView() override;
+    void setBattMgr(BattManagerBase* mgr) { battMgr_ = mgr; }
 
 private:
     void loadSettings(SettingsManager& mgr);
@@ -63,6 +64,7 @@ private:
     bool dimmed_ = false, sleeping_ = false;
     std::vector<InputBase*> inputs_;
     bool lastBtn_ = false;
+    BattManagerBase* battMgr_ = nullptr;
 
 #ifdef USE_LGFX
     lgfx::v1::LGFX_Device* lgfxDevice_ = nullptr;

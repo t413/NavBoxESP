@@ -35,6 +35,8 @@ constexpr uint8_t TOUCH_ADDR_B      = 0x14;
 constexpr uint8_t GPS_RX = 44;
 constexpr uint8_t GPS_TX = 43;
 constexpr uint8_t SPIBUS_HOST = FSPI;
+constexpr uint8_t PIN_BAT_ADC = 4;
+constexpr float BAT_ADC_MULT = (2.0f * 3.3f * 1000.0f);
 
 SPIClass spibus(SPIBUS_HOST);
 
@@ -88,6 +90,7 @@ static LGFX device;
 
 static void _setupLvgl(int dispW, int dispH);
 void setupTDeckInput(Controller*);
+uint16_t readBatteryMV();
 
 void setup() {
     Serial.begin(115200);
@@ -357,11 +360,40 @@ public:
     }
 };
 
-// ───────────────────────────────────────────────────────────────────────────────
-// Initialize input handlers in main setup
+class TDeckBattery : public BattManagerBase {
+public:
+    void setup() override { pinMode(PIN_BAT_ADC, INPUT); }
+    float getMV() const override {
+        const uint8_t samples = 8;
+        uint32_t raw = 0;
+        for (uint8_t i = 0; i < samples; i++)
+            raw += analogRead(PIN_BAT_ADC);
+        raw /= samples;
+        return ((BAT_ADC_MULT * (float)raw) / 4096.0f);
+    }
+    float getMVtoPercent(uint16_t mv) const override {
+        static const uint16_t table[][2] = {
+            {4200, 100}, {4050, 90}, {3950, 80}, {3850, 70}, {3800, 60},
+            {3750, 50},  {3700, 40}, {3650, 30}, {3600, 20}, {3550, 10},
+            {3400, 5},   {3200, 0}
+        };
+        const uint8_t entries = sizeof(table) / sizeof(table[0]);
+        if (mv >= table[0][0]) return 100;
+        if (mv <= table[entries - 1][0]) return 0;
+        for (uint8_t i = 0; i < entries - 1; i++) {
+            if (mv >= table[i + 1][0]) {
+                float fraction = (float)(mv - table[i + 1][0]) / (table[i][0] - table[i + 1][0]);
+                return table[i + 1][1] + (float)(fraction * (table[i][1] - table[i + 1][1]));
+            }
+        }
+        return 0;
+    }
+};
+
 static TDeckTrackball tdeck_trackball;
 static TDeckKeyboard tdeck_keyboard;
 static TDeckTouch tdeck_touch;
+static TDeckBattery tdeck_batt;
 
 // Call this in your setup, after creating ctrl:
 void setupTDeckInput(Controller* c) {
@@ -381,4 +413,6 @@ void setupTDeckInput(Controller* c) {
         MAP_LOG("input res(%d) after %d tries", res, tries);
         c->addInput(ip);
     }
+    tdeck_batt.setup();
+    c->setBattMgr(&tdeck_batt);
 }
