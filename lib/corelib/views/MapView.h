@@ -1,6 +1,7 @@
 #pragma once
 #include <views/ViewBase.h>
 #include <navboxlib/MapRenderer.h>
+#include <ControllerBase.h>
 #include <stringmoc.h>
 
 class Controller;
@@ -18,7 +19,9 @@ public:
     void hide() override;
     void iterate(bool inview) override;
     void onGPSUpdate(GpsManager*);
-    void onKey(uint8_t key) override;
+    bool onKey(uint8_t key, uint32_t now) override;
+    bool onTouch(const BaseTouchPoint& delta, uint32_t now) override;
+    bool onScroll(const TrackballDelta& delta, uint32_t now) override;
     bool handleBack() override;
     void setCenter(const GeoPoint &);
     MapRenderer& getMap() { return map_; }
@@ -36,6 +39,8 @@ private:
     bool followMode_ = true;
     bool isActive_ = false;
     uint32_t lastForceRedraw_ = 0;
+    bool isPressed_ = false;
+    BaseTouchPoint lastTouch_;
 
     // Sidebar UI elements
     _lv_obj_t* sidebar_ = nullptr;

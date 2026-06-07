@@ -51,6 +51,7 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     auto& lyr = markerLayer();
     homeMarkerId_ = lyr.add(Marker({}, map_.homesize_, map_.colHome_, 'H'));
     dotMarkerId_ = lyr.add(Marker({}, map_.dotsize_, map_.colAccent_)); //second to be on top
+    MAP_LOG("map created [%dx%d], %d layers, crop %d", map_.getWidth(), map_.getHeight(), (int)map_.getLayers().size(), map_.cropmode_);
 
     _updateSidebar();
     map_.setZoom(12);
@@ -108,33 +109,58 @@ void MapView::onGPSUpdate(GpsManager* gps) {
     }
 }
 
-void MapView::onKey(uint8_t key) {
-    switch (key) {
-        case ctrlbtns::KEY_ARROW_UP:
-            map_.panPx(0, -20); followMode_ = false; break;
-        case ctrlbtns::KEY_ARROW_DOWN:
-            map_.panPx(0, 20);  followMode_ = false; break;
-        case ctrlbtns::KEY_ARROW_LEFT:
-            map_.panPx(-20, 0); followMode_ = false; break;
-        case ctrlbtns::KEY_ARROW_RIGHT:
-            map_.panPx(20, 0);  followMode_ = false; break;
-        case '[': map_.setZoom(map_.zoomtotal() - 1); break;
-        case ']': map_.setZoom(map_.zoomtotal() + 1); break;
-        case 'f':
-            followMode_ = true;
-            if (gps_ && gps_->hasFix())
-                map_.setCenter(gps_->toPoint());
-            break;
-        case 'h':
-            markerLayer().updatePoint(homeMarkerId_, getMap().getCenter());
-            map_._updateLayers();
-            break;
-        case 'r':
-            if (ctrl_) ctrl_->toggleRecording();
-            break;
-    }
+bool MapView::onKey(uint8_t key, uint32_t now) {
+    if (key == ctrlbtns::KEY_ARROW_UP) { map_.panPx(0, -20); followMode_ = false;
+    } else if (key == ctrlbtns::KEY_ARROW_DOWN) { map_.panPx(0, 20);  followMode_ = false;
+    } else if (key == ctrlbtns::KEY_ARROW_LEFT) { map_.panPx(-20, 0); followMode_ = false;
+    } else if (key == ctrlbtns::KEY_ARROW_RIGHT) { map_.panPx(20, 0);  followMode_ = false;
+    } else if (key == '[') { map_.setZoom(map_.zoomtotal() - 1);
+    } else if (key == ']') { map_.setZoom(map_.zoomtotal() + 1);
+    } else if (key == 'f') {
+        followMode_ = true;
+        if (gps_ && gps_->hasFix()) map_.setCenter(gps_->toPoint());
+    } else if (key == 'h') {
+        markerLayer().updatePoint(homeMarkerId_, getMap().getCenter());
+        map_._updateLayers();
+    } else if (key == 'r') {
+        if (ctrl_) ctrl_->toggleRecording();
+    } else { return false; }
     _updateSidebar();
+    return true;
 }
+
+bool MapView::onTouch(const BaseTouchPoint& pt, uint32_t now) {
+    if (pt.pressed) {
+        //TODO check for click position, allow other elements to be clicked
+        if (!isPressed_) {
+            MAP_LOG("mapv: touch down %d,%d", pt.x, pt.y);
+            isPressed_ = true;
+        } else {
+            map_.panPx(lastTouch_.x - pt.x, lastTouch_.y - pt.y);
+            followMode_ = false;
+        }
+        lastTouch_ = pt;
+    } else {
+        MAP_LOG("mapv: touch end %d,%d", pt.x, pt.y);
+        isPressed_ = false;
+    }
+    return true;
+}
+
+bool MapView::onScroll(const TrackballDelta& delta, uint32_t now) {
+    if (delta.dx != 0 || delta.dy != 0) { //move map!
+        if (delta.pressed && delta.dy == 0) {
+            return false; //let controller handle click
+        } else if (delta.pressed) {
+            map_.setZoom(map_.zoom() + delta.dy);
+        } else {
+            map_.panPx(delta.dx * 4, delta.dy * 4);
+            followMode_ = false;
+        }
+    }
+    return true;
+}
+
 
 bool MapView::handleBack() {
     if (!followMode_ && gps_ && gps_->hasFix()) {

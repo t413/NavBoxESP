@@ -120,7 +120,7 @@ void ListView::iterate(bool active) {
     // if (active) refreshAll();
 }
 
-void ListView::onKey(uint8_t key) {
+bool ListView::onKey(uint8_t key, uint32_t now) {
     if (key == ctrlbtns::KEY_RETURN) {
         onRowAction(focused_);
     } else if (key == ctrlbtns::KEY_ARROW_UP || key == ctrlbtns::KEY_ARROW_DOWN) {
@@ -130,5 +130,6 @@ void ListView::onKey(uint8_t key) {
         if (prev != focused_) activateRow(focused_);
     } else if (key == ctrlbtns::KEY_ARROW_LEFT || key == ctrlbtns::KEY_ARROW_RIGHT) {
         onRowAdjust(focused_, key == ctrlbtns::KEY_ARROW_RIGHT);
-    }
+    } else return false;
+    return true;
 }

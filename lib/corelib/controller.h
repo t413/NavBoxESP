@@ -24,18 +24,25 @@ public:
     void setupLgfx(lgfx::v1::LGFX_Device&);
 #endif
     void setupGPS(int rx, int tx, uint32_t baud, HardwareSerial& uart);
+    void addInput(InputBase* input) { inputs_.push_back(input); }
+
     void iterate(uint32_t now);
     void switchView(ViewID id);
     _lv_obj_t* getOverlayRoot() override { return overlayRoot_; }
     void setOverlay(ViewBase*) override;
     const SettingsManager* getSetMgr() const override { return &settingsManager_; }
     SettingsManager* getSetMgr() override { return &settingsManager_; }
-    void wakeup(uint32_t now);
+    ViewBase* getCurrentView() const;
+    bool wakeup(uint32_t now);
     void doLightSleep();
 
     bool toggleRecording();
     bool isRecording() const { return recordTrack_.isRecording(); }
     bool loadTrack(const char* path, TrackLog*);
+
+    virtual bool onKey(uint8_t key, uint32_t now) override;
+    virtual bool onTouch(const BaseTouchPoint&, uint32_t now) override;
+    virtual bool onScroll(const TrackballDelta&, uint32_t now) override;
 
     virtual uint8_t getBatt() const override; /// battery percentage
     virtual void setBrightness(uint8_t) override;
@@ -45,7 +52,6 @@ public:
 private:
     void loadSettings(SettingsManager& mgr);
     MapView* getMapView();
-    void _processKeys(uint32_t now);
     void _updateDimming(uint32_t now);
     _lv_obj_t* parent_  = nullptr;   // screen root
     _lv_obj_t* overlayRoot_ = nullptr; //for modal overlays
@@ -53,6 +59,8 @@ private:
     const char* version_ = "v?";
     uint32_t lastActivityMs_ = 0;
     bool dimmed_ = false, sleeping_ = false;
+    std::vector<InputBase*> inputs_;
+    bool lastBtn_ = false;
 
 #ifdef USE_LGFX
     lgfx::v1::LGFX_Device* lgfxDevice_ = nullptr;

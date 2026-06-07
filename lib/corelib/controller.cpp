@@ -12,6 +12,9 @@
 
 Controller::Controller(const char* v) : version_(v), recordTrack_(BASEDIR_TRACKS_REC) {}
 
+static BaseTouchPoint g_touch_data = {};
+static bool g_touch_ready = false;
+
 void Controller::setup(lv_obj_t* parent) {
     parent_ = parent;
     // Full-screen overlay container for modals (sits above views, below nothing)
@@ -74,6 +77,8 @@ void Controller::setOverlay(ViewBase* overlay) {
 }
 
 void Controller::iterate(uint32_t now) {
+    for (auto input : inputs_) input->iterate(now);
+
     // 1. Update GPS/State
     if (gps_.iterate(now)) {
         getMapView()->onGPSUpdate(&gps_);
@@ -83,7 +88,6 @@ void Controller::iterate(uint32_t now) {
                 getMapView()->getMap()._updateLayers(); //periodically update
         }
     }
-    _processKeys(now);
     _updateDimming(now);
 
     // 3. Update all views
@@ -93,43 +97,74 @@ void Controller::iterate(uint32_t now) {
     }
 }
 
-void Controller::_processKeys(uint32_t now) {
-#ifdef USE_M5
-    M5Cardputer.update();
-    auto& kb = M5Cardputer.Keyboard;
-    if (kb.isChange()) {
-        ViewBase* active = views_[(uint8_t)currentView_];
-        if (overlay_) active = overlay_;
-        if (kb.isKeyPressed(KEY_TAB)) {
-            int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
-            switchView((ViewID)next);
-        } else if (kb.isKeyPressed(ctrlbtns::KEY_ESC)) {
-            if (active && !active->handleBack()) {
-                if (overlay_) setOverlay(nullptr);
-                else switchView(ViewID::MAP);
-            }
-        } else if (active) { // Forward keys to active view
-            // Normal character keys
-            for (auto c : kb.keysState().word) {
-                active->onKey((uint8_t)c);
-            }
-            // Special function keys mapped to custom codes
-            if (kb.isKeyPressed(KEY_ENTER)) active->onKey(ctrlbtns::KEY_RETURN);
-            if (kb.isKeyPressed(KEY_BACKSPACE)) active->onKey(ctrlbtns::KEY_DELETE);
-        }
-        wakeup(now);
+bool Controller::onKey(uint8_t key, uint32_t now) {
+    MAP_LOG("Input KEY: 0x%02X ('%c')", key, (key >= 32 && key < 127) ? (char)key : '?');
+    if (wakeup(now)) return true; //consume input
+    auto cv = getCurrentView();
+
+    if (cv) { // Route to active view
+        if (cv->onKey(key, now))
+            return true;
     }
-#else
-    if (!digitalRead(GPIO_NUM_0)) {
+    if (key == ctrlbtns::KEY_ESC) { // Global shortcuts
+        switchView(ViewID::MAP);  // Always can escape to map
+    } else if (key == 'p') {
+        switchView((ViewID)(((int)currentView_ + 1) % (int)ViewID::COUNT));
+    }
+    return false;
+}
+
+bool Controller::onTouch(const BaseTouchPoint& tp, uint32_t now) {
+    MAP_LOG("Input TOUCH: x=%d y=%d press=%d", tp.x, tp.y, tp.pressed);
+    if (wakeup(now)) return true; //consume input
+    auto cv = getCurrentView();
+
+    if (cv) { // Route to active view
+        if (cv->onTouch(tp, now))
+            return true;
+    }
+
+    // Let LVGL handle it (it has a touch input device driver)
+    lv_indev_t* indev = lv_indev_get_next(nullptr);
+    while (indev) {
+        if (lv_indev_get_type(indev) == LV_INDEV_TYPE_POINTER) {
+            g_touch_data = tp;
+            g_touch_ready = true;
+            break;
+        }
+        indev = lv_indev_get_next(indev);
+    }
+    return false;
+}
+
+bool Controller::onScroll(const TrackballDelta& delta, uint32_t now) {
+    MAP_LOG("Input SCROLL: dx=%d dy=%d press=%d", delta.dx, delta.dy, delta.pressed);
+    if (wakeup(now)) return true; //consume input
+    auto cv = getCurrentView();
+    if (cv) { // Route to active view
+        if (cv->onScroll(delta, now))
+            return true;
+    }
+    //TODO temporary: send arrow keys to layout
+    if (delta.dy != 0) {
+        return cv->onKey(delta.dy > 0 ? ctrlbtns::KEY_ARROW_UP : ctrlbtns::KEY_ARROW_DOWN, now);
+    } else if (delta.dx != 0) {
+        return cv->onKey(delta.dx > 0 ? ctrlbtns::KEY_ARROW_RIGHT : ctrlbtns::KEY_ARROW_LEFT, now);
+    } else if (delta.pressed && !lastBtn_) {
+        auto ret = cv->onKey(ctrlbtns::KEY_RETURN, now);
+        lastBtn_ = delta.pressed;
+        return ret;
+    }
+
+    if (delta.pressed && !lastBtn_) {
         int next = ((int)currentView_ + 1) % (int)ViewID::COUNT;
         switchView((ViewID)next);
-        wakeup(now);
     }
-#endif
+    lastBtn_ = delta.pressed;
+    return false;
 }
 
 void Controller::setBrightness(uint8_t b) {
-    screenBrightness_ = b;
 #ifdef USE_M5
     M5.Display.setBrightness(b);
     if (b <= 1) M5.Display.sleep();
@@ -141,6 +176,7 @@ void Controller::setBrightness(uint8_t b) {
         else if (dimmed_ || sleeping_) lgfxDevice_->wakeup();
     }
 #endif
+    for (auto input : inputs_) input->setBrightness(b);
 }
 
 std::pair<uint16_t, uint16_t> Controller::getDispSize() const {
@@ -158,6 +194,7 @@ void Controller::_updateDimming(uint32_t now) {
     if (screenDimSec_ == 0) return; // "never" mode
     uint32_t idle = (now - lastActivityMs_) / 1000;
     if (!dimmed_ && idle >= (screenDimSec_ - 5)) {
+        MAP_LOG("Display dim after %us idle", idle);
         dimmed_ = true;
         setBrightness(10); // very dim
     }
@@ -169,18 +206,21 @@ void Controller::_updateDimming(uint32_t now) {
     }
 }
 
-void Controller::wakeup(uint32_t now) {
+bool Controller::wakeup(uint32_t now) {
     lastActivityMs_ = now;
     if (dimmed_ || sleeping_) {
         setBrightness(screenBrightness_);
         dimmed_ = sleeping_ = false;
         getMapView()->getMap()._updateLayers();
+        return true;
     }
+    return false;
 }
 
 void Controller::doLightSleep() {
     while (sleeping_) {
         MAP_LOG("light sleeping btn %d", digitalRead(GPIO_NUM_0));
+        for (auto input : inputs_) input->onSleep(true);
         auto start = millis();
         esp_sleep_enable_uart_wakeup(1);  // UART1 = Serial1
         gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
@@ -199,6 +239,8 @@ void Controller::doLightSleep() {
             }
         }
     }
+    MAP_LOG("light sleep done, re-enabling %d inputs", (int)inputs_.size());
+    for (auto input : inputs_) input->onSleep(false);
 }
 
 uint8_t Controller::getBatt() const {
@@ -231,8 +273,13 @@ bool Controller::loadTrack(const char* path, TrackLog* to) {
     return false;
 }
 
+ViewBase* Controller::getCurrentView() const {
+    return overlay_? overlay_ : views_[(int)currentView_];
+}
+
 void Controller::switchView(ViewID id) {
-    ViewBase* cur = views_[(int)currentView_];
+    ViewBase* cur = getCurrentView();
+    if (cur == overlay_) setOverlay(nullptr);
     ViewBase* next = views_[(int)id];
     if (cur) cur->hide();
     if (next) next->show();

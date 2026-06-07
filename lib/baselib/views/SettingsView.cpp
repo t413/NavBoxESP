@@ -82,7 +82,7 @@ void SettingsView::setGroup(int gid) {
     _populate();
 }
 
-void SettingsView::onKey(uint8_t key) {
+bool SettingsView::onKey(uint8_t key, uint32_t now) {
     RowData& row = rowdata_.at(focusedIdx_ % visibleRows_);
     if (key == ctrlbtns::KEY_ARROW_UP || key == ctrlbtns::KEY_ARROW_DOWN) {
         if (!isEditing_) {
@@ -116,7 +116,8 @@ void SettingsView::onKey(uint8_t key) {
             editBuffer_ += (char)key;
             _refreshRowValue(row, true);
         }
-    }
+    } else return false;
+    return true;
 }
 
 bool SettingsView::handleBack() {

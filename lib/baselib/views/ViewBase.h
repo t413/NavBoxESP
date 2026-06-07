@@ -3,6 +3,8 @@
 
 class ControllerBase;
 class SettingsManager;
+struct BaseTouchPoint;
+struct TrackballDelta;
 struct _lv_obj_t;
 
 enum class ViewID {
@@ -20,6 +22,9 @@ public:
     virtual void show() = 0;
     virtual void hide() = 0;
     virtual void iterate(bool active) = 0;
-    virtual void onKey(uint8_t key) = 0;
+
+    virtual bool onKey(uint8_t key, uint32_t now) { return false; }
+    virtual bool onTouch(const BaseTouchPoint&, uint32_t now) { return false; }
+    virtual bool onScroll(const TrackballDelta&, uint32_t now) { return false; }
     virtual bool handleBack() = 0;
 };

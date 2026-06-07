@@ -2,6 +2,11 @@
 #include <stdint.h>
 
 struct _lv_obj_t;
+class ViewBase;
+class SettingsManager;
+class InputBase;
+struct BaseTouchPoint;
+struct TrackballDelta;
 
 namespace ctrlbtns {
     static constexpr char KEY_ESC = '`';
@@ -12,10 +17,6 @@ namespace ctrlbtns {
     static constexpr char KEY_ARROW_LEFT = ',';
     static constexpr char KEY_ARROW_RIGHT = '/';
 }
-
-// Forward declaration
-class ViewBase;
-class SettingsManager;
 
 /**
  * Abstract base class for Controller.
@@ -31,9 +32,33 @@ public:
 
     virtual const SettingsManager* getSetMgr() const = 0;
     virtual SettingsManager* getSetMgr() = 0;
+    virtual bool onKey(uint8_t key, uint32_t now) { return false; }
+    virtual bool onTouch(const BaseTouchPoint&, uint32_t now) { return false; }
+    virtual bool onScroll(const TrackballDelta&, uint32_t now) { return false; }
 
     virtual std::pair<uint16_t, uint16_t> getDispSize() const = 0;
     virtual uint8_t getBatt() const = 0; /// battery percentage
     virtual const char* gitVersion() const = 0;
     virtual void setBrightness(uint8_t) = 0;
+};
+
+class InputBase {
+public:
+    virtual ~InputBase() = default;
+    virtual bool begin(ControllerBase* ctrl) { ctrl_ = ctrl; return true; }
+    virtual bool iterate(uint32_t now) = 0; // Called every frame to poll/update
+    virtual void end() = 0;  // Called before light sleep
+    virtual void onSleep(bool sleeping) { }  // Can override for low-power behavior
+    virtual bool setBrightness(uint8_t) { return false; }
+protected:
+    ControllerBase* ctrl_ = nullptr;
+};
+
+struct BaseTouchPoint {
+    int16_t x = -1, y = -1;
+    bool pressed = false;
+};
+struct TrackballDelta {
+    int16_t dx = 0, dy = 0;
+    bool pressed = false;
 };

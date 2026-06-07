@@ -7,41 +7,41 @@
 #include <basetilewriter.h>
 #include "controller.h"
 #include "version.h"
+#include <TouchDrv.hpp>
 
 // Default pin definitions (can be overridden by build_flags)
-constexpr int PIN_POWER_ON  = 10;
-constexpr int SHARED_SCK    = 40;
-constexpr int SHARED_MISO   = 38;
-constexpr int SHARED_MOSI   = 41;
-constexpr int SDCARD_CS     = 39;
-constexpr int TFT_CS        = 12;
-constexpr int TFT_BL        = 42;
-constexpr int TFT_DC        = 11;
-constexpr int TFT_WIDTH     = 240; //rotated later
-constexpr int TFT_HEIGHT    = 320;
-constexpr int ROTATION      = 1;
-constexpr int KB_I2C_SDA    = 18;
-constexpr int KB_I2C_SCL    = 8;
-constexpr int KB_I2S_ADDR   = 0x55;
-constexpr int TRACKBALL_SEL     = 0;
-constexpr int TRACKBALL_UP      = 3;
-constexpr int TRACKBALL_DOWN    = 15;
-constexpr int TRACKBALL_LEFT    = 2;
-constexpr int TRACKBALL_RIGHT   = 1;
-constexpr int TOUCH_SDA     = 18;  // Same I2C as keyboard
-constexpr int TOUCH_SCL     = 8;
-constexpr int TOUCH_INT     = 16;
-constexpr int TOUCH_ADDR    = 0x14;  // GT911_SLAVE_ADDRESS_L
-constexpr int GPS_RX = 44;
-constexpr int GPS_TX = 43;
-constexpr auto SPIBUS_HOST = FSPI;
+constexpr uint8_t PIN_POWER_ON  = 10;
+constexpr uint8_t SHARED_SCK    = 40;
+constexpr uint8_t SHARED_MISO   = 38;
+constexpr uint8_t SHARED_MOSI   = 41;
+constexpr uint8_t SDCARD_CS     = 39;
+constexpr uint8_t TFT_CS        = 12;
+constexpr uint8_t TFT_BL        = 42;
+constexpr uint8_t TFT_DC        = 11;
+constexpr uint16_t TFT_WIDTH    = 240; //rotated later
+constexpr uint16_t TFT_HEIGHT   = 320;
+constexpr uint8_t ROTATION      = 1;
+constexpr uint8_t SHARED_I2C_SDA    = 18;
+constexpr uint8_t SHARED_I2C_SCL    = 8;
+constexpr uint8_t KB_I2S_ADDR       = 0x55;
+constexpr uint8_t TRACKBALL_SEL     = 0;
+constexpr uint8_t TRACKBALL_UP      = 3;
+constexpr uint8_t TRACKBALL_DOWN    = 15;
+constexpr uint8_t TRACKBALL_LEFT    = 2;
+constexpr uint8_t TRACKBALL_RIGHT   = 1;
+constexpr uint8_t TOUCH_INT         = 16;
+constexpr uint8_t TOUCH_ADDR_A      = 0x5D; //can be either based on int pin state
+constexpr uint8_t TOUCH_ADDR_B      = 0x14;
+constexpr uint8_t GPS_RX = 44;
+constexpr uint8_t GPS_TX = 43;
+constexpr uint8_t SPIBUS_HOST = FSPI;
 
 SPIClass spibus(SPIBUS_HOST);
 
 // LVGL display + touch buffers
 static lv_disp_draw_buf_t _dispBuf;
-static lv_color_t* _buf1; //allocated below
-static lv_color_t* _buf2;
+static lv_color_t* _buf1 = nullptr;
+static lv_color_t* _buf2 = nullptr;
 static lv_disp_drv_t _dispDrv;
 
 static Controller ctrl(GIT_VERSION);
@@ -84,21 +84,17 @@ public:
     }
 };
 
-LGFX device;
+static LGFX device;
 
 static void _setupLvgl(int dispW, int dispH);
+void setupTDeckInput(Controller*);
 
 void setup() {
     Serial.begin(115200);
     MAP_LOG("T-Deck startup (free: %u)", ESP.getFreeHeap());
 
-    // power on pin
     pinMode(PIN_POWER_ON, OUTPUT);
     digitalWrite(PIN_POWER_ON, HIGH);
-
-    // init I2C (keyboard/brightness helpers on some T-Deck variants)
-    Wire.begin();
-
     pinMode(TFT_BL, OUTPUT);
     digitalWrite(TFT_BL, HIGH);
 
@@ -107,7 +103,8 @@ void setup() {
     device.fillScreen(0);
     device.setTextColor(0x58A6FF); // COL_ACCENT
     device.setTextDatum(middle_center);
-    device.drawString("NavBox Loading...", device.width() / 2, device.height() / 2, &fonts::FreeSansBold12pt7b);
+    device.drawString("NavBox", device.width() / 2, device.height() / 2, &fonts::FreeSansBold12pt7b);
+    device.drawString("by t413", device.width() / 2, device.height() / 2 + 20, &fonts::FreeSerifItalic12pt7b);
 
     _setupLvgl(device.width(), device.height());
     MAP_LOG("Display Init %d: %dx%d, colorDepth=%d, r %d", iret, device.width(), device.height(),  device.getColorDepth(), device.getRotation());
@@ -125,7 +122,8 @@ void setup() {
         MAP_LOG("[SD] Not found — tile/GPX features disabled");
     }
     ctrl.setup(screen);
-    ctrl.setupGPS(GPS_RX, GPS_TX, 38400, Serial2);
+    ctrl.setupGPS(GPS_RX, GPS_TX, 38400, Serial1);
+    setupTDeckInput(&ctrl);
 
     lv_task_handler();
     MAP_LOG("T-Deck setup complete (free %d) version %s", ESP.getFreeHeap(), GIT_VERSION);
@@ -141,15 +139,11 @@ void loop() {
 static void _setupLvgl(int dispW, int dispH) {
     MAP_LOG("lvgl init start %dx%d (free: %u)", dispW, dispH, ESP.getFreeHeap());
     lv_init();
-
-    // const int bufsize = dispW * dispH;  // Full screen
-    // _buf2 = nullptr;  // Single buffer mode
-    // _dispDrv.full_refresh = 1;  // Full refresh mode for full buffer
-    const int bufsize = dispW * 20;
+    // _buf1 = (lv_color_t*)malloc(sizeof(lv_color_t) * dispW * dispH);
+    const int bufsize = dispW * dispH / 6;
     _buf1 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
     _buf2 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
     MAP_LOG("lvgl init made bufs (free: %u)", ESP.getFreeHeap());
-
     lv_disp_draw_buf_init(&_dispBuf, _buf1, _buf2, bufsize);
     lv_disp_drv_init(&_dispDrv);
     _dispDrv.hor_res  = dispW;
@@ -166,5 +160,225 @@ static void _setupLvgl(int dispW, int dispH) {
     _dispDrv.draw_buf = &_dispBuf;
     _dispDrv.full_refresh = 0;
     lv_disp_drv_register(&_dispDrv);
-    MAP_LOG("lvgl init done (free: %u)", ESP.getFreeHeap());
+    MAP_LOG("lvgl init done, size %d (free: %u)", dispW * dispH, ESP.getFreeHeap());
+}
+
+
+
+// ------------------------ //
+// ---- Input handling ---- //
+// ------------------------ //
+
+
+class TDeckKeyboard : public InputBase {
+    bool keyboard_present_ = false;
+public:
+    bool begin(ControllerBase* ctrl) override {
+        InputBase::begin(ctrl);
+        Wire.beginTransmission(KB_I2S_ADDR);
+        keyboard_present_ = (Wire.endTransmission(true) == 0); // 0 is success
+        MAP_LOG("I2C keyboard at 0x%02X -> %d after", KB_I2S_ADDR, keyboard_present_);
+        return keyboard_present_;
+    }
+    void end() override { } // Could power down keyboard here if needed
+    bool iterate(uint32_t now) override {
+        if (!keyboard_present_) return false;
+        Wire.beginTransmission(KB_I2S_ADDR);
+        if (Wire.endTransmission() == 0) {
+            if (Wire.requestFrom((uint8_t)KB_I2S_ADDR, (uint8_t)1) >= 1) {
+                if (Wire.available()) {
+                    auto key = (char)Wire.read();
+                    if (key != 0) ctrl_->onKey(key, now);
+                }
+            }
+        }
+        return true;
+    }
+    bool setBrightness(uint8_t brightval) override {
+        // if (!keyboard_present_) return false;
+        Wire.beginTransmission(KB_I2S_ADDR);
+        auto r1 = Wire.write(0x01); //brightness command
+        auto r2 = Wire.write(brightval);
+        auto r3 = Wire.endTransmission();
+        MAP_LOG("keyboard:bright(%d) [%d,%d,%d]", brightval, r1, r2, r3);
+        return true;
+    }
+};
+
+class TDeckTouch : public InputBase {
+    TouchDrvGT911 touch_;
+    bool touch_present_ = false;
+    bool lastPressed_ = false;
+    uint32_t lastPressChange_ = 0;
+    const int pressDebounceMs_ = 40;
+    uint32_t last_ = 0;
+    const int maxUpdateMs_ = 10;
+public:
+    bool begin(ControllerBase* ctrl) override {
+        InputBase::begin(ctrl);
+        MAP_LOG("TDeckTouch", "Starting GT911 touchscreen at 0x%02X, int %d", TOUCH_ADDR_A, TOUCH_INT);
+        pinMode(TOUCH_INT, INPUT);
+        touch_.setPins(-1, TOUCH_INT);
+        touch_present_ = touch_.begin(Wire, TOUCH_ADDR_A) || touch_.begin(Wire, TOUCH_ADDR_B);
+        if (touch_present_) {
+            touch_.setMaxCoordinates(device.width(), device.height());
+            touch_.setSwapXY(true);
+            touch_.setMirrorXY(false, true);
+        }
+        MAP_LOG("TDeckTouch result %d after, supports %d points", touch_present_, touch_.getSupportTouchPoint());
+        return touch_present_;
+    }
+    void end() override { }
+    bool iterate(uint32_t now) override {
+        if (!touch_present_ || !ctrl_) return false;
+        if ((now - last_) < maxUpdateMs_) return true; // too quick
+
+        bool pressed = touch_.isPressed();
+        const auto& touches = touch_.getTouchPoints();
+
+        if (pressed && touches.getPointCount() == 0 || (pressed == lastPressed_))
+            return true; //no update for us
+
+        if (!pressed) { //often reports no-touches / not-pressed
+            if ((now - lastPressChange_) >= pressDebounceMs_) {
+                lastPressed_ = false;
+                lastPressChange_ = now;
+            } else { return true; } //not enough time gone by yet
+        }
+
+        //TODO multi-touch!
+        BaseTouchPoint tp;
+        if (touches.hasPoints()) {
+            tp.x = touches[0].x;
+            tp.y = touches[0].y;
+            tp.pressed = true;
+            ctrl_->onTouch(tp, now);
+        }
+        ctrl_->onTouch(tp, now);
+        last_ = now;
+        return true;
+    }
+    void onSleep(bool sleeping) override { }
+};
+
+static volatile uint32_t s_trackball_up = 0, s_trackball_down = 0;
+static volatile uint32_t s_trackball_left = 0, s_trackball_right = 0;
+
+void IRAM_ATTR isr_trackball_up() { s_trackball_up++; }
+void IRAM_ATTR isr_trackball_down() { s_trackball_down++; }
+void IRAM_ATTR isr_trackball_left() { s_trackball_left++; }
+void IRAM_ATTR isr_trackball_right() { s_trackball_right++; }
+
+class TDeckTrackball : public InputBase {
+    bool trackball_enabled_ = false;
+    bool prevSelState_ = false;
+    uint32_t prevSelChange_ = 0;
+    int16_t trackball_x_ = 0, trackball_y_ = 0; //accumulates
+    const int maxUpdateMs_ = 10; //100hz
+    uint32_t lastUpdateScroll_ = 0;
+public:
+    bool begin(ControllerBase* ctrl) override {
+        InputBase::begin(ctrl);
+        MAP_LOG("TDeckTrackball", "Starting trackball on GPIO %d,%d,%d,%d (press %d)",
+                TRACKBALL_UP, TRACKBALL_DOWN, TRACKBALL_LEFT, TRACKBALL_RIGHT, TRACKBALL_SEL);
+        // Set up GPIO for trackball
+        pinMode(TRACKBALL_SEL, INPUT_PULLUP);
+        pinMode(TRACKBALL_UP, INPUT_PULLUP);
+        pinMode(TRACKBALL_DOWN, INPUT_PULLUP);
+        pinMode(TRACKBALL_LEFT, INPUT_PULLUP);
+        pinMode(TRACKBALL_RIGHT, INPUT_PULLUP);
+        onSleep(false);
+        return true;
+    }
+    void end() override { onSleep(true); }
+
+    bool iterate(uint32_t now) override {
+        // Poll trackball press button (GPIO0, active-low), always even if ball is disabled
+        bool sel = !digitalRead(TRACKBALL_SEL);
+        bool selChanged = false;
+
+        // Debounce: only fire on falling edge with 100ms hysteresis
+        if (sel != prevSelState_ && ((now - prevSelChange_) >= maxUpdateMs_)) {
+            prevSelState_ = sel;
+            prevSelChange_ = now;
+            selChanged = true;
+        }
+
+        if (!trackball_enabled_ && selChanged) { //disabled scrolling? still notify select
+            TrackballDelta td;
+            td.pressed = sel;
+            ctrl_->onScroll(td, now);
+            return true;
+        }
+
+        // Atomically read ISR counters
+        uint32_t up, down, left, right;
+        noInterrupts();
+        up = s_trackball_up; s_trackball_up = 0;
+        down = s_trackball_down; s_trackball_down = 0;
+        left = s_trackball_left; s_trackball_left = 0;
+        right = s_trackball_right; s_trackball_right = 0;
+        interrupts();
+
+        // Accumulate deltas
+        trackball_x_ += (int16_t)(right - left);
+        trackball_y_ += (int16_t)(up - down);
+
+        // Send delta if we've accumulated movement
+        bool sendupdate = selChanged; //select is already debounced! always update when it wants to
+        sendupdate |= (trackball_x_ != 0 || trackball_y_ != 0) && ((now - lastUpdateScroll_) > maxUpdateMs_);
+        if (sendupdate) {
+            lastUpdateScroll_ = now;
+            TrackballDelta td;
+            td.dx = trackball_x_;
+            td.dy = trackball_y_;
+            td.pressed = prevSelState_;
+            ctrl_->onScroll(td, now);
+            trackball_x_ = 0;
+            trackball_y_ = 0;
+        }
+        return false;
+    }
+
+    void onSleep(bool sleeping) override {
+        if (sleeping) {
+            detachInterrupt(TRACKBALL_UP);
+            detachInterrupt(TRACKBALL_DOWN);
+            detachInterrupt(TRACKBALL_LEFT);
+            detachInterrupt(TRACKBALL_RIGHT);
+            trackball_enabled_ = false;
+        } else { // Attach ISRs (FALLING edge for active-low)
+            attachInterrupt(TRACKBALL_UP, isr_trackball_up, FALLING);
+            attachInterrupt(TRACKBALL_DOWN, isr_trackball_down, FALLING);
+            attachInterrupt(TRACKBALL_LEFT, isr_trackball_left, FALLING);
+            attachInterrupt(TRACKBALL_RIGHT, isr_trackball_right, FALLING);
+            trackball_enabled_ = true;
+        }
+    }
+};
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Initialize input handlers in main setup
+static TDeckTrackball tdeck_trackball;
+static TDeckKeyboard tdeck_keyboard;
+static TDeckTouch tdeck_touch;
+
+// Call this in your setup, after creating ctrl:
+void setupTDeckInput(Controller* c) {
+    bool i2cinit = false;
+    for (uint8_t i = 0; i < 20; i++) {
+        if ((i2cinit = Wire.begin(SHARED_I2C_SDA, SHARED_I2C_SCL)))
+            break;
+        delay(5);
+    }
+    MAP_LOG("I2C Wire.begin %d", i2cinit);
+    for (InputBase* ip : {(InputBase*)&tdeck_trackball, (InputBase*)&tdeck_touch, (InputBase*)&tdeck_keyboard}) {
+        uint8_t tries = 0;
+        bool res = false;
+        while (tries++ < 20 && ! ((res = ip->begin(c))) ) {
+            delay(10);
+        }
+        MAP_LOG("input res(%d) after %d tries", res, tries);
+        c->addInput(ip);
+    }
 }
