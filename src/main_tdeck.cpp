@@ -40,12 +40,10 @@ constexpr float BAT_ADC_MULT = (2.0f * 3.3f * 1000.0f);
 
 SPIClass spibus(SPIBUS_HOST);
 
-// LVGL display + touch buffers
-static lv_disp_draw_buf_t _dispBuf;
+// LVGL display + touch buffer
+lv_display_t * _disp = nullptr;
 static lv_color_t* _buf1 = nullptr;
 static lv_color_t* _buf2 = nullptr;
-static lv_disp_drv_t _dispDrv;
-
 static Controller ctrl(GIT_VERSION);
 
 class LGFX : public lgfx::LGFX_Device {
@@ -112,7 +110,7 @@ void setup() {
     _setupLvgl(device.width(), device.height());
     MAP_LOG("Display Init %d: %dx%d, colorDepth=%d, r %d", iret, device.width(), device.height(),  device.getColorDepth(), device.getRotation());
 
-    lv_obj_t* screen = lv_scr_act();
+    lv_obj_t* screen = lv_screen_active();
     lv_obj_set_style_bg_color(screen, lv_color_hex(0x000000), 0);
     ctrl.setupLgfx(device);
 
@@ -135,38 +133,37 @@ void setup() {
 void loop() {
     uint32_t now = lgfx::millis();
     ctrl.iterate(now);
-    lv_task_handler();
+    lv_timer_handler_run_in_period(10);
     yield();
 }
 
 static void _setupLvgl(int dispW, int dispH) {
     MAP_LOG("lvgl init start %dx%d (free: %u)", dispW, dispH, ESP.getFreeHeap());
     lv_init();
-    // _buf1 = (lv_color_t*)malloc(sizeof(lv_color_t) * dispW * dispH);
-    const int bufsize = dispW * dispH / 6;
-    _buf1 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
-    _buf2 = (lv_color_t*)malloc(sizeof(lv_color_t) * bufsize);
-    MAP_LOG("lvgl init made bufs (free: %u)", ESP.getFreeHeap());
-    lv_disp_draw_buf_init(&_dispBuf, _buf1, _buf2, bufsize);
-    lv_disp_drv_init(&_dispDrv);
-    _dispDrv.hor_res  = dispW;
-    _dispDrv.ver_res  = dispH;
-    _dispDrv.flush_cb = [](lv_disp_drv_t* drv, const lv_area_t* area, lv_color_t* data) {
+    lv_tick_set_cb([]() { return (uint32_t)millis(); });
+
+    _disp = lv_display_create(dispW, dispH);
+
+    const int bufsize = sizeof(lv_color_t) * dispW * dispH;
+    _buf1 = (lv_color_t*)malloc(bufsize);
+    // _buf2 = (lv_color_t*)malloc(bufsizes);
+    MAP_LOG("lvgl init made bufs [%d] (free: %u)", bufsize, ESP.getFreeHeap());
+
+    lv_display_set_buffers(_disp, _buf1, _buf2, bufsize, LV_DISPLAY_RENDER_MODE_FULL);
+
+    lv_display_set_flush_cb(_disp, [](lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
         uint32_t w = area->x2 - area->x1 + 1;
         uint32_t h = area->y2 - area->y1 + 1;
         device.startWrite();
         device.setAddrWindow(area->x1, area->y1, w, h);
-        device.writePixels((lgfx::rgb565_t*)data, w * h);
+        device.writePixels((lgfx::rgb565_t*)px_map, w * h);
         device.endWrite();
-        lv_disp_flush_ready(drv);
-    };
-    _dispDrv.draw_buf = &_dispBuf;
-    _dispDrv.full_refresh = 0;
-    lv_disp_drv_register(&_dispDrv);
+        lv_display_flush_ready(disp);
+    });
+
+    lv_display_set_default(_disp);
     MAP_LOG("lvgl init done, size %d (free: %u)", dispW * dispH, ESP.getFreeHeap());
 }
-
-
 
 // ------------------------ //
 // ---- Input handling ---- //

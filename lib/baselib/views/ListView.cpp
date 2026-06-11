@@ -90,7 +90,7 @@ void ListView::setRowBorder(int idx, uint32_t color) {
 void ListView::showSpinner(bool show) {
     if (show) {
         if (spinner_) return;
-        spinner_ = lv_spinner_create(root_, 1000, 60);
+        spinner_ = lv_spinner_create(root_);
         lv_obj_add_flag(spinner_, LV_OBJ_FLAG_FLOATING);
         lv_obj_set_size(spinner_, 40, 40);
         lv_obj_align(spinner_, LV_ALIGN_CENTER, 0, 0);
