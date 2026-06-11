@@ -16,6 +16,12 @@ void FilesView::show() {
     ListView::show();
 }
 
+void FilesView::hide() {
+    ListView::hide();
+    lv_obj_clean(listCont_);
+    rows_.clear();
+}
+
 void FilesView::iterate(uint32_t now, bool inview) { }
 
 void FilesView::onRowAction(int idx) {

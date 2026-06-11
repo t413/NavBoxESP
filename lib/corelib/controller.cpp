@@ -83,7 +83,6 @@ void Controller::setOverlay(ViewBase* overlay) {
         lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN);
         if (overlay_) {
             overlay_->hide();
-            delete overlay_;
         }
     }
     overlay_ = overlay;
@@ -314,7 +313,7 @@ void Controller::nextView() {
 
 void Controller::switchView(ViewID id) {
     ViewBase* cur = getCurrentView();
-    if (cur == overlay_) setOverlay(nullptr);
+    if (cur == overlay_) { setOverlay(nullptr); cur = getCurrentView(); }
     ViewBase* next = views_[(int)id];
     if (cur) cur->hide();
     if (next) next->show();

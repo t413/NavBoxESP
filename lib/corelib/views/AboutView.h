@@ -17,6 +17,7 @@ public:
     bool handleBack() override { return false; }
     Controller* ctrlr() const { return (Controller*) ctrl_; }
 
+    FilesView* picker_ = nullptr; //lazy loaded, preserved
 
 private:
     void refresh();

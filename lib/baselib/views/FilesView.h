@@ -8,6 +8,7 @@ class FilesView : public ListView {
 public:
     void create(_lv_obj_t* parent, ControllerBase* ctrl) override;
     void show() override;
+    void hide() override;
     void iterate(uint32_t now, bool inview) override;
     bool handleBack() override;
 

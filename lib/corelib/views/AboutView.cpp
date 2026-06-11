@@ -71,20 +71,21 @@ void AboutView::refreshRow(int idx) {
 }
 
 void AboutView::showFilePicker(TrackLog* dest) {
-    auto picker = new FilesView();
-    picker->create(ctrl_->getOverlayRoot(), ctrl_);
-    lv_obj_set_size(picker->root_, LV_PCT(80), LV_PCT(95));
-    lv_obj_center(picker->root_);
-    lv_obj_set_style_bg_color(picker->root_, lv_color_hex(0x082b0e), 0); // #082b0e
-    picker->setDir(BASEDIR_TRACKS_REC);
-    picker->show();
-    picker->setCallback([this,dest](const char* path) {
+    if (!picker_)
+        picker_ = new FilesView();
+    picker_->create(ctrl_->getOverlayRoot(), ctrl_);
+    lv_obj_set_size(picker_->root_, LV_PCT(80), LV_PCT(95));
+    lv_obj_center(picker_->root_);
+    lv_obj_set_style_bg_color(picker_->root_, lv_color_hex(0x082b0e), 0); // #082b0e
+    picker_->setDir(BASEDIR_TRACKS_REC);
+    picker_->show();
+    picker_->setCallback([this,dest](const char* path) {
         if (dest) {
             ctrlr()->loadTrack(path, dest);
             ctrl_->setOverlay(nullptr);
         }
     });
-    ctrl_->setOverlay(picker);
+    ctrl_->setOverlay(picker_);
 }
 
 void AboutView::onRowAction(int idx) {
