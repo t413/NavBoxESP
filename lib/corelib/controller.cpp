@@ -4,6 +4,8 @@
 #include "views/SettingsView.h"
 #include <lvgl.h>
 #include <navboxlib/log.h>
+#include <driver/uart.h>
+#include <esp_sleep.h>
 #ifdef USE_M5
 #include <M5Cardputer.h>
 #elif defined(USE_LGFX)
@@ -25,17 +27,6 @@ void Controller::setup(lv_obj_t* parent) {
     lv_obj_set_style_pad_all(overlayRoot_, 0, 0);
     lv_obj_set_scrollbar_mode(overlayRoot_, LV_SCROLLBAR_MODE_OFF);
     lv_obj_add_flag(overlayRoot_, LV_OBJ_FLAG_HIDDEN); // hidden when no modals
-
-    // setup LVGL touch support
-    // lv_indev_drv_t indev_drv;
-    // lv_indev_drv_init(&indev_drv);
-    // indev_drv.type = LV_INDEV_TYPE_POINTER;
-    // indev_drv.read_cb = [](lv_indev_drv_t* drv, lv_indev_data_t* data) {
-    //     data->point.x = g_touch_data.x;
-    //     data->point.y = g_touch_data.y;
-    //     data->state = g_touch_data.pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
-    // };
-    // lv_indev_drv_register(&indev_drv);
 
     // Initialize views
     views_[(int)ViewID::MAP] = new MapView();
@@ -198,9 +189,9 @@ void Controller::setBrightness(uint8_t b) {
     else if (dimmed_ || sleeping_) M5.Display.wakeup();
 #elif defined(USE_LGFX)
     if (lgfxDevice_) {
-        lgfxDevice_->setBrightness(b);
         if (b <= 1) lgfxDevice_->sleep();
         else if (dimmed_ || sleeping_) lgfxDevice_->wakeup();
+        lgfxDevice_->setBrightness(b);
     }
 #endif
     for (auto input : inputs_) input->setBrightness(b);
@@ -249,7 +240,8 @@ void Controller::doLightSleep() {
         MAP_LOG("light sleeping btn %d", digitalRead(GPIO_NUM_0));
         for (auto input : inputs_) input->onSleep(true);
         auto start = millis();
-        auto ures = esp_sleep_enable_uart_wakeup(1);  // UART1 = Serial1
+        uart_set_wakeup_threshold(UART_NUM_1, 3);
+        auto ures = esp_sleep_enable_uart_wakeup(UART_NUM_1);
         auto gres = gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);
         auto sres = esp_sleep_enable_gpio_wakeup();
         MAP_LOG("sleep prep %d %d %d", ures, gres, sres);

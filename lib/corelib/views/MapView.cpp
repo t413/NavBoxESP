@@ -40,6 +40,7 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
     // Initialize Map on the left side
     map_.begin(root_, dispW - sidebarW, dispH, BASEDIR_TILES "/%d/%d/%d.png");
     map_.setXY(0, 0);
+    map_.setSmartInvert(true);
 
     _createSidebar(root_);
 
@@ -55,6 +56,7 @@ void MapView::create(lv_obj_t* parent, ControllerBase* ctrl) {
 
     _updateSidebar();
     map_.setZoom(12);
+    map_.iterate(millis(), true); //block for initial tiles load
 }
 
 void MapView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); isActive_ = false; }
@@ -72,6 +74,8 @@ MarkerLayer& MapView::markerLayer() {
 void MapView::iterate(uint32_t now, bool inview) {
     isActive_ = inview;
     //map_ updates handled by key events or GPS point updates
+    if (inview)
+        map_.iterate(now);
 }
 
 static constexpr int16_t CROP_RECENTER_DIST = 14;
@@ -114,8 +118,9 @@ bool MapView::onKey(uint8_t key, uint32_t now) {
     } else if (key == ctrlbtns::KEY_ARROW_DOWN) { map_.panPx(0, 20);  followMode_ = false;
     } else if (key == ctrlbtns::KEY_ARROW_LEFT) { map_.panPx(-20, 0); followMode_ = false;
     } else if (key == ctrlbtns::KEY_ARROW_RIGHT) { map_.panPx(20, 0);  followMode_ = false;
-    } else if (key == '[') { map_.setZoom(map_.zoomtotal() - 1);
-    } else if (key == ']') { map_.setZoom(map_.zoomtotal() + 1);
+    } else if (key == '[' || key == 'i') { map_.setZoom(map_.zoomtotal() - 1);
+    } else if (key == ']' || key == 'o') { map_.setZoom(map_.zoomtotal() + 1);
+    } else if (key == 'b') { map_.setSmartInvert(!map_.getInverted());
     } else if (key == 'f') {
         followMode_ = true;
         if (gps_ && gps_->hasFix()) map_.setCenter(gps_->toPoint());
@@ -152,7 +157,7 @@ bool MapView::onScroll(const TrackballDelta& delta, uint32_t now) {
         if (delta.pressed && delta.dy == 0) {
             return false; //let controller handle click
         } else if (delta.pressed) {
-            map_.setZoom(map_.zoom() + delta.dy);
+            map_.setZoom(map_.zoomtotal() + delta.dy);
         } else {
             map_.panPx(delta.dx * 4, delta.dy * 4);
             followMode_ = false;
@@ -190,7 +195,6 @@ void MapView::_createSidebar(lv_obj_t* parent) {
     lv_obj_set_pos(sidebar_, map_.getWidth(), 0);
     lv_obj_set_style_bg_color(sidebar_, lv_color_hex(COL_SIDEBAR_BG), 0);
     lv_obj_set_style_border_side(sidebar_, LV_BORDER_SIDE_LEFT, 0);
-    lv_obj_set_style_border_color(sidebar_, lv_color_hex(0x2a3040), 0);
     lv_obj_set_style_border_width(sidebar_, 1, 0);
     lv_obj_set_style_pad_all(sidebar_, 0, 0);
     lv_obj_set_scrollbar_mode(sidebar_, LV_SCROLLBAR_MODE_OFF);
@@ -228,6 +232,7 @@ void MapView::_createSidebar(lv_obj_t* parent) {
 }
 
 void MapView::_updateSidebar(const TrackPoint* point) {
+    lv_obj_set_style_border_color(sidebar_, lv_color_hex(map_.getInverted()? sidebarBg_ : 0x2a3040), 0); // #2a3040
     bool fixed = gps_ && gps_->hasFix();
     if (!point && fixed) point = &gps_->toPoint();
     float hdop = gps_ ? gps_->hdop() : 99.9f;

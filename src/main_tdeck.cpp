@@ -104,8 +104,8 @@ void setup() {
     device.fillScreen(0);
     device.setTextColor(0x58A6FF); // COL_ACCENT
     device.setTextDatum(middle_center);
-    device.drawString("NavBox", device.width() / 2, device.height() / 2, &fonts::FreeSansBold12pt7b);
-    device.drawString("by t413", device.width() / 2, device.height() / 2 + 20, &fonts::FreeSerifItalic12pt7b);
+    device.drawString("NavBox", device.width() / 2, device.height() / 2 - 10, &fonts::FreeSansBold12pt7b);
+    device.drawString("by t413", device.width() / 2, device.height() / 2 + 10, &fonts::FreeSerifItalic12pt7b);
 
     _setupLvgl(device.width(), device.height());
     MAP_LOG("Display Init %d: %dx%d, colorDepth=%d, r %d", iret, device.width(), device.height(),  device.getColorDepth(), device.getRotation());

@@ -53,6 +53,7 @@ private:
     _lv_obj_t* recDot_ = nullptr;
     _lv_obj_t* recLabel_ = nullptr;
     _lv_obj_t* viewDots_[(int)ViewID::COUNT] = {};
+    uint32_t sidebarBg_ = 0x161b28; // #040916
 
     void _createSidebar(_lv_obj_t* parent);
     void _updateSidebar(const TrackPoint* = nullptr);

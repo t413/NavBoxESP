@@ -12,7 +12,7 @@ Portable offline GPS navigation with the $30 M5 Cardputer
 </p>
 
 - Ultra-lightweight offline mapping for your M5 Cardputer (more devices coming!)
-- GPX track viewing, recording, and saving. Downlad hikes from AllTrails, etc, and actually navigate in the wild!
+- GPX track viewing, recording, and saving. Download hikes from AllTrails, etc, and actually navigate in the wild!
 - Zoom and pan navigation with device-local tile rendering from the SD card
 - Built on [NavBoxLib](https://github.com/t413/NavBoxLib), my open-source embedded mapping engine
 
@@ -53,11 +53,11 @@ The firmware tries both on boot, both should work!
 
 ## Not AI
 
-Written by me, [@t413](https://github.com/t413), a real firmware dev. Not vibecoded. My documentation isn't overly verbose bs, and this thing actually works. Each detail tested _on hardware_ and commited piece-by-piece with OG TDD principles and SWE good practices. As much as possible is tested throughly.
+Written by me, [@t413](https://github.com/t413), a real firmware dev. Not vibecoded. My documentation isn't overly verbose bs, and this thing actually works. Each detail tested _on hardware_ and committed piece-by-piece with OG TDD principles and SWE good practices. As much as possible is tested throughly.
 
 ### A starting point for other projects
 
-This project is a fantastic intro to using [LVGL](https://lvgl.io/) to make beautiful responsive modern UIs with minimal memory&CPU usage. The initial difficult part of this project, the mapping engine, is even broken out to my [NavBoxLib](https://github.com/t413/NavBoxLib) compodent so the app portion stays simple. If you're looking to make a firmware project this repository is a great place to start. It has:
+This project is a fantastic intro to using [LVGL](https://lvgl.io/) to make beautiful responsive modern UIs with minimal memory&CPU usage. The initial difficult part of this project, the mapping engine, is even broken out to my [NavBoxLib](https://github.com/t413/NavBoxLib) component so the app portion stays simple. If you're looking to make a firmware project this repository is a great place to start. It has:
 
 - Working dependencies with M5 libraries. Not all versions work, it took a lot of testing and debugging to get dependencies pinned and things compiling and running.
 - Working LVGL menuing, lists, overlays, etc
@@ -70,7 +70,7 @@ This project is a fantastic intro to using [LVGL](https://lvgl.io/) to make beau
 
 ## Helping
 
-If you've got suggestions, ideas, or want to help please open an Issue here on github! Code contributions with PR's are welcome, but it's always easier if you can come to some conscensious on the need and path first.
+If you've got suggestions, ideas, or want to help please open an Issue here on github! Code contributions with PR's are welcome, but it's always easier if you can come to some conscientious on the need and path first.
 
 ## License
 
