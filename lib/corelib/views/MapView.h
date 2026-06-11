@@ -17,7 +17,7 @@ public:
     void create(_lv_obj_t*, ControllerBase*) override;
     void show() override;
     void hide() override;
-    void iterate(bool inview) override;
+    void iterate(uint32_t now, bool inview) override;
     void onGPSUpdate(GpsManager*);
     bool onKey(uint8_t key, uint32_t now) override;
     bool onTouch(const BaseTouchPoint& delta, uint32_t now) override;

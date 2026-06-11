@@ -21,7 +21,7 @@ public:
     virtual void create(_lv_obj_t* parent, ControllerBase*) = 0;
     virtual void show() = 0;
     virtual void hide() = 0;
-    virtual void iterate(bool active) = 0;
+    virtual void iterate(uint32_t now, bool active) = 0;
 
     virtual bool onKey(uint8_t key, uint32_t now) { return false; }
     virtual bool onTouch(const BaseTouchPoint&, uint32_t now) { return false; }

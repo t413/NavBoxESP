@@ -18,7 +18,7 @@ public:
     void create(struct _lv_obj_t* parent, ControllerBase* ctrl) override;
     void show() override;
     void hide() override;
-    void iterate(bool active) override;
+    void iterate(uint32_t now, bool active) override;
     bool onKey(uint8_t key, uint32_t now) override;
     bool handleBack() override;
 

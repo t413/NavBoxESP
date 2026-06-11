@@ -63,7 +63,7 @@ void SettingsView::hide() {
     lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN);
 }
 
-void SettingsView::iterate(bool active) {
+void SettingsView::iterate(uint32_t now, bool active) {
     if (isDirtyTime_ > 0) {
         uint32_t elapsed = millis() - isDirtyTime_;
         if (autosaveEnabled_ && elapsed > sc::FILE_WRITE_DELAY) {

@@ -116,7 +116,7 @@ void ListView::activateRow(int idx) {
 
 void ListView::show() { lv_obj_clear_flag(root_, LV_OBJ_FLAG_HIDDEN); activateRow(focused_); }
 void ListView::hide() { lv_obj_add_flag(root_, LV_OBJ_FLAG_HIDDEN); }
-void ListView::iterate(bool active) {
+void ListView::iterate(uint32_t now, bool active) {
     // if (active) refreshAll();
 }
 

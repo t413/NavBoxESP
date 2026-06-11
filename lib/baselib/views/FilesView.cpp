@@ -16,7 +16,7 @@ void FilesView::show() {
     ListView::show();
 }
 
-void FilesView::iterate(bool inview) { }
+void FilesView::iterate(uint32_t now, bool inview) { }
 
 void FilesView::onRowAction(int idx) {
     if (idx < 0 || idx >= (int)rows_.size()) return;

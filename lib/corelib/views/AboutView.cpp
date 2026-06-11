@@ -42,10 +42,6 @@ void AboutView::show() {
     ListView::show();
 }
 
-void AboutView::iterate(bool inview) {
-    ListView::iterate(inview);
-}
-
 void AboutView::refresh() {
     refreshAll();
 }

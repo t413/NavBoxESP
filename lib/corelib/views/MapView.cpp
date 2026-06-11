@@ -69,7 +69,7 @@ MarkerLayer& MapView::markerLayer() {
     return *(map_.getMarkerLayer());
 }
 
-void MapView::iterate(bool inview) {
+void MapView::iterate(uint32_t now, bool inview) {
     isActive_ = inview;
     //map_ updates handled by key events or GPS point updates
 }
