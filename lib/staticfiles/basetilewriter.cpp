@@ -59,7 +59,7 @@ bool ensureBaseTilesOnSD(const char* basedir) {
         size_t written = f.write(tile.data, tile.length);
         f.close();
         if (written != tile.length) {
-            MAP_LOG("[Tiles] Write mismatch for %s: %u vs %u", tpath.c_str(), written, tile.length);
+            MAP_LOG("[Tiles] Write mismatch for %s: %d vs %u", tpath.c_str(), (int)written, tile.length);
             return false;
         }
         if ((i + 1) % 5 == 0)

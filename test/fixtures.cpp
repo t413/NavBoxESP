@@ -44,20 +44,28 @@ void printfile(const char* fn) {
     std::cout << content << std::endl;
 }
 
-void draw_lvgl_png(lv_disp_drv_t* drv, const char* path) {
-    if (!drv || !drv->draw_buf) return;
-    int w = drv->hor_res;
-    int h = drv->ver_res;
-    lv_color_t* cbuf = (lv_color_t*)drv->draw_buf->buf1;
-    std::vector<uint8_t> rgb888(w * h * 3);
-    for (int i = 0; i < w * h; i++) {
-        // LVGL color to RGB888
-        rgb888[i * 3 + 0] = (cbuf[i].ch.red << 3) | (cbuf[i].ch.red >> 2);
-        rgb888[i * 3 + 1] = (cbuf[i].ch.green << 2) | (cbuf[i].ch.green >> 4);
-        rgb888[i * 3 + 2] = (cbuf[i].ch.blue << 3) | (cbuf[i].ch.blue >> 2);
+int filesize(const char* fn) {
+    struct stat st;
+    return (stat(fn, &st) == 0)? st.st_size : -1;
+}
+
+bool draw_lvgl_png(lv_display_t* drv, const char* path) {
+    if (!drv) return false;
+    int w = lv_display_get_horizontal_resolution(drv);
+    int h = lv_display_get_vertical_resolution(drv);
+    auto active = lv_display_get_screen_active(drv);
+    auto snapshot = lv_snapshot_take(active, LV_COLOR_FORMAT_RGB888);
+    if (snapshot) {
+        EXPECT_EQ(snapshot->header.cf, LV_COLOR_FORMAT_RGB888);
+        for (size_t i = 0; i < (w * h * 3); i += 3) //process whole image,
+            std::swap(snapshot->data[i], snapshot->data[i + 2]);  //swap R and B
+        int res = stbi_write_png(path, w, h, 3, snapshot->data, w * 3);
+        MAP_LOG("draw_lvgl_to_png wrote %s [%dx%d] -> res %d", path, w, h, res);
+        lv_draw_buf_destroy(snapshot);
+    } else {
+        ADD_FAILURE() << "lv_snapshot_take failed for " << path;
     }
-    auto res = stbi_write_png(path, w, h, 3, rgb888.data(), w * 3);
-    MAP_LOG("draw_lvgl_to_png wrote %s [%dx%d] -> res %d", path, w, h, res);
+    return snapshot != nullptr;
 }
 
 // A minimal 4x4 rainbow png. starts with r, g, b, w, then more rainbow for the rest.
@@ -88,9 +96,15 @@ const std::vector<uint8_t> png256hi = {
 
 TmpFileHelper::TmpFileHelper(const std::vector<uint8_t> &img, string fn) {
     fn_ = fn.empty()? fmtstr("/tmp/testpng_%d.png", img.size()) : fn;
+    std::filesystem::path p(fn_);
+    if (p.has_parent_path() && !std::filesystem::exists(p.parent_path())) {
+        std::filesystem::create_directories(p.parent_path());
+    }
     std::ofstream ofs(fn_, std::ios::binary);
     ofs.write((const char*) img.data(), img.size());
     ofs.close();
+    if (ofs.fail()) { MAP_LOG("TmpFileHelper ERROR: Failed to write to %s (check permissions/path)", fn_.c_str()); }
+    else { MAP_LOG("TmpFileHelper created %s, filesize %d", fn_.c_str(), filesize(fn_.c_str())); }
 }
 TmpFileHelper::TmpFileHelper(const std::string &content, string fn)
     : TmpFileHelper(std::vector<uint8_t>(content.begin(), content.end()), fn) {}
@@ -124,15 +138,11 @@ void LvglTestEnv::reset(uint16_t width, uint16_t height) {
         buf_.clear();
     } else {
         lv_init();
-        lv_disp_draw_buf_init(&draw_buf_, buf_.data(), NULL, width_ * height_);
-        lv_disp_drv_init(&disp_drv_);
-        disp_drv_.draw_buf = &draw_buf_;
-        disp_drv_.hor_res = width_;
-        disp_drv_.ver_res = height_;
-        disp_drv_.flush_cb = [](lv_disp_drv_t* d, const lv_area_t*, lv_color_t*) {
-            lv_disp_flush_ready(d);
-        };
-        disp_ = lv_disp_drv_register(&disp_drv_);
+        disp_ = lv_display_create(width_, height_);
+        lv_display_set_buffers(disp_, buf_.data(), NULL, buf_.size() * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
+        lv_display_set_flush_cb(disp_, [](lv_display_t* d, const lv_area_t*, uint8_t*) {
+            lv_display_flush_ready(d);
+        });
 
         base_ = lv_obj_create(lv_scr_act());
         lv_obj_set_size(base_, width_, height_);
@@ -156,16 +166,16 @@ void LvglTestEnv::draw() {
     lv_refr_now(disp_);
 }
 
-filesystem::path LvglTestEnv::outdir() {
-    return testOutdir();
+filesystem::path LvglTestEnv::outdir() const {
+    return filesystem::current_path() / "testoutputs";
 }
 
-void LvglTestEnv::save(std::string suffix) {
+bool LvglTestEnv::save(std::string suffix) {
     try {
         auto dir = outdir();
         filesystem::create_directories(dir);
         auto fn = dir / ("test_" + testname() + suffix + ".png");
-        draw_lvgl_png(&disp_drv_, fn.c_str());
+        return draw_lvgl_png(disp_, fn.c_str());
     } catch (const filesystem::filesystem_error& e) {
         MAP_LOG("fs error %s", e.what());
     }

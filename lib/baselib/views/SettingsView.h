@@ -19,7 +19,7 @@ public:
     void show() override;
     void hide() override;
     void iterate(uint32_t now, bool active) override;
-    bool onKey(uint8_t key, uint32_t now) override;
+    bool onKey(uint8_t key, uint32_t now = 0) override;
     bool handleBack() override;
 
     void setGroup(int gid = HOMEPAGE_GROUP);

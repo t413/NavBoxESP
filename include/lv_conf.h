@@ -34,6 +34,12 @@
 #define LV_USE_SNAPSHOT           1
 
 #define LV_USE_STDLIB_MALLOC      LV_STDLIB_BUILTIN
-#define LV_MEM_SIZE               (256 * 1024U)
+#define LV_MEM_SIZE               (64 * 1024U)
+
+#ifdef ARDUINO
 #define LV_MEM_POOL_INCLUDE       <esp_heap_caps.h>
-#define LV_MEM_POOL_ALLOC(size)   heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)
+#define LV_MEM_POOL_ALLOC(size) heap_caps_malloc(size, MALLOC_CAP_8BIT)
+#else
+#define LV_MEM_POOL_INCLUDE       <stdlib.h>
+#define LV_MEM_POOL_ALLOC(size) malloc(size)
+#endif
